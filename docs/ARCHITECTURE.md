@@ -12,7 +12,7 @@ src/wishwright/
   discovery.py    # CandidateSource protocol; FixtureSource (JSONL, works today);
                   #   XApiSource (stub, raises NotImplementedError until credentials exist)
   evaluation.py   # score_candidate(candidate, policy) -> Evaluation; safety is a hard gate
-  storage.py      # Ledger: validated JSON-backed {candidate_id: stage} map, atomic writes
+  storage.py      # Ledger: validated JSON-backed {candidate_id: stage} map, locked atomic writes
   pipeline.py     # advance(ledger, id) steps one stage forward; to_backlog_entry() builds
                   #   a project-factory-shaped brief from an approved candidate
   publish.py      # check_ready(path) verifies README/LICENSE/CI exist on disk before publish
@@ -73,6 +73,8 @@ pytest --cov=wishwright --cov-report=term-missing
 No network access or paid API is required to run the full test suite — everything exercises
 `FixtureSource` and local fixtures. Tests include property checks for scoring invariants. Fixture,
 ledger, and audit-log boundaries reject malformed data before it can reach the state machine.
+Ledger writes take an exclusive lock and refresh state first, preventing stale processes from
+overwriting each other's entries.
 `XApiSource` is a stub; wiring it up is tracked in
 `BACKLOG.md` and requires no changes to `evaluation.py`, `storage.py`, `pipeline.py`,
 `publish.py`, or `reply.py` — only a new `CandidateSource` implementation.
