@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from wishwright.runlog import log_event
 
 
@@ -32,3 +34,12 @@ def test_log_event_appends_without_truncating_prior_entries(tmp_path):
 
     lines = log_path.read_text().splitlines()
     assert len(lines) == 2
+
+
+@pytest.mark.parametrize(
+    "stage,candidate_id,result",
+    [("unknown", "1", "approved"), ("evaluated", " ", "approved"), ("evaluated", "1", "")],
+)
+def test_log_event_rejects_invalid_event_fields(tmp_path, stage, candidate_id, result):
+    with pytest.raises(ValueError, match="invalid run-log"):
+        log_event(tmp_path / "run.jsonl", stage=stage, candidate_id=candidate_id, result=result)
