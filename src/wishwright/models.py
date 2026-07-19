@@ -21,9 +21,18 @@ class Candidate:
 
     @classmethod
     def from_dict(cls, data: dict) -> "Candidate":
-        missing = [f for f in REQUIRED_CANDIDATE_FIELDS if not data.get(f)]
+        if not isinstance(data, dict):
+            raise ValueError("candidate must be a JSON object")
+        missing = [field for field in REQUIRED_CANDIDATE_FIELDS if field not in data]
         if missing:
             raise ValueError(f"candidate missing required field(s): {', '.join(missing)}")
+        invalid = [
+            field
+            for field in REQUIRED_CANDIDATE_FIELDS
+            if not isinstance(data.get(field), str) or not data[field].strip()
+        ]
+        if invalid:
+            raise ValueError(f"candidate invalid required field(s): {', '.join(invalid)}")
         return cls(**{f: data[f] for f in REQUIRED_CANDIDATE_FIELDS})
 
 
