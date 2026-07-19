@@ -1,6 +1,8 @@
 import json
 
-from wishwright.cli import main
+import pytest
+
+from wishwright.cli import build_parser, main
 
 
 def test_evaluate_applies_config_deny_terms_end_to_end(tmp_path, capsys):
@@ -118,3 +120,54 @@ def test_status_reports_known_stage_mix(tmp_path, capsys):
         "published": 0,
         "replied": 0,
     }
+
+
+def test_help_lists_every_subcommand_with_a_description(capsys):
+    parser = build_parser()
+    with pytest.raises(SystemExit):
+        parser.parse_args(["--help"])
+    out = capsys.readouterr().out
+
+    subparsers_action = next(
+        action for action in parser._actions if action.dest == "command"
+    )
+    assert subparsers_action.choices, "no subcommands registered"
+    # each subcommand needs a name AND a non-empty one-line description, and
+    # both must actually show up in --help output
+    for choice_pseudo_action in subparsers_action._choices_actions:
+        assert choice_pseudo_action.dest in out
+        assert choice_pseudo_action.help, f"{choice_pseudo_action.dest} has no help text"
+        assert choice_pseudo_action.help in out
+
+
+def test_evaluate_output_columns_stay_aligned_for_varied_text_lengths(tmp_path, capsys):
+    fixture = tmp_path / "posts.jsonl"
+    fixture.write_text(
+        "\n".join(
+            [
+                '{"id": "short", "author": "a", "text": "wish", '
+                '"url": "https://x.com/a/1", "created_at": "2026-07-10T00:00:00Z"}',
+                '{"id": "much-longer-id", "author": "b", '
+                '"text": "i wish there was an app that everyone could use for '
+                'something with a much much longer piece of request text here", '
+                '"url": "https://x.com/b/2", "created_at": "2026-07-11T00:00:00Z"}',
+            ]
+        )
+        + "\n"
+    )
+
+    exit_code = main(
+        ["evaluate", "--input", str(fixture), "--log", str(tmp_path / "run.jsonl")]
+    )
+    out = capsys.readouterr().out
+    assert exit_code == 0
+
+    lines = out.splitlines()
+    data_lines = [line for line in lines if line.startswith(("short", "much-longer-id"))]
+    assert len(data_lines) == 2
+
+    # score is formatted "%5.2f" (one digit before the decimal point, since
+    # scores are in [0, 1]), so the decimal point lands in the same column
+    # on every row regardless of how long the candidate id or text is.
+    decimal_columns = {line.index(".") for line in data_lines}
+    assert len(decimal_columns) == 1
