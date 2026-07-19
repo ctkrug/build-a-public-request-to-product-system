@@ -42,3 +42,15 @@ def test_ledger_rejects_corrupt_or_unknown_persisted_state(tmp_path, contents):
 
     with pytest.raises(ValueError, match=rf"invalid ledger .*{path}"):
         Ledger(path)
+
+
+@pytest.mark.parametrize("candidate_id", ["", "  ", 1])
+def test_mark_seen_rejects_invalid_candidate_ids_without_persisting(tmp_path, candidate_id):
+    path = tmp_path / "ledger.json"
+    ledger = Ledger(path)
+
+    with pytest.raises(ValueError, match="candidate_id"):
+        ledger.mark_seen(candidate_id)
+
+    assert ledger.counts_by_stage() == {stage: 0 for stage in ("discovered", "evaluated", "built", "published", "replied")}
+    assert not path.exists()
