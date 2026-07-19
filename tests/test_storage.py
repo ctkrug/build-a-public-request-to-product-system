@@ -20,6 +20,19 @@ def test_ledger_persists_across_instances(tmp_path):
     assert reloaded.stage_of("1") == "evaluated"
 
 
+def test_stale_ledger_instances_do_not_overwrite_each_others_entries(tmp_path):
+    path = tmp_path / "ledger.json"
+    first_tab = Ledger(path)
+    second_tab = Ledger(path)
+
+    first_tab.mark_seen("one")
+    second_tab.mark_seen("two", stage="evaluated")
+
+    reloaded = Ledger(path)
+    assert reloaded.stage_of("one") == "discovered"
+    assert reloaded.stage_of("two") == "evaluated"
+
+
 def test_counts_by_stage(tmp_path):
     ledger = Ledger(tmp_path / "ledger.json")
     ledger.mark_seen("1", stage="discovered")
