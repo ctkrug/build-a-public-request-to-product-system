@@ -13,7 +13,17 @@ def test_evaluate_applies_config_deny_terms_end_to_end(tmp_path, capsys):
     config_path = tmp_path / "config.yaml"
     config_path.write_text("policy:\n  deny_terms:\n    - birthday party\n")
 
-    exit_code = main(["evaluate", "--input", str(fixture), "--config", str(config_path)])
+    exit_code = main(
+        [
+            "evaluate",
+            "--input",
+            str(fixture),
+            "--config",
+            str(config_path),
+            "--log",
+            str(tmp_path / "run.jsonl"),
+        ]
+    )
     out = capsys.readouterr().out
 
     assert exit_code == 0
@@ -22,12 +32,42 @@ def test_evaluate_applies_config_deny_terms_end_to_end(tmp_path, capsys):
     assert "0.00" in lines[0]
 
 
-def test_evaluate_prints_ranked_shortlist(capsys):
-    exit_code = main(["evaluate", "--input", "fixtures/sample_posts.jsonl"])
+def test_evaluate_prints_ranked_shortlist(tmp_path, capsys):
+    exit_code = main(
+        [
+            "evaluate",
+            "--input",
+            "fixtures/sample_posts.jsonl",
+            "--log",
+            str(tmp_path / "run.jsonl"),
+        ]
+    )
     out = capsys.readouterr().out
     assert exit_code == 0
     assert "id" in out
     assert "score" in out
+
+
+def test_evaluate_appends_run_log_entry_per_candidate(tmp_path, capsys):
+    log_path = tmp_path / "nested" / "run.jsonl"
+    exit_code = main(
+        [
+            "evaluate",
+            "--input",
+            "fixtures/sample_posts.jsonl",
+            "--log",
+            str(log_path),
+        ]
+    )
+    capsys.readouterr()
+
+    assert exit_code == 0
+    lines = log_path.read_text().splitlines()
+    assert len(lines) == 4
+    for line in lines:
+        entry = json.loads(line)
+        assert entry.keys() >= {"timestamp", "stage", "candidate_id", "result"}
+        assert entry["stage"] == "evaluated"
 
 
 def test_evaluate_empty_input_does_not_crash(tmp_path, capsys):
