@@ -6,7 +6,7 @@ from __future__ import annotations
 from pathlib import Path
 
 REQUIRED_FILES = ("README.md", "LICENSE")
-REQUIRED_CI_GLOB = ".github/workflows/*.yml"
+REQUIRED_CI_GLOBS = (".github/workflows/*.yml", ".github/workflows/*.yaml")
 
 
 def check_ready(path: str | Path) -> list[str]:
@@ -19,10 +19,10 @@ def check_ready(path: str | Path) -> list[str]:
         return [f"{root} is not a directory"]
 
     for name in REQUIRED_FILES:
-        if not (root / name).exists():
+        if not (root / name).is_file():
             reasons.append(f"missing {name}")
 
-    if not list(root.glob(REQUIRED_CI_GLOB)):
+    if not any(workflow.is_file() for pattern in REQUIRED_CI_GLOBS for workflow in root.glob(pattern)):
         reasons.append("missing a CI workflow under .github/workflows/")
 
     return reasons
