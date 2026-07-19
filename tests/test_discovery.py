@@ -25,6 +25,14 @@ def test_fixture_source_raises_on_bad_json(tmp_path):
         list(FixtureSource(fixture).fetch(search_phrases=[]))
 
 
+def test_fixture_source_reports_invalid_utf8_with_path_and_line(tmp_path):
+    fixture = tmp_path / "posts.jsonl"
+    fixture.write_bytes(b'{"id": "1"}\n\xff')
+
+    with pytest.raises(ValueError, match=rf"{fixture}:2: invalid UTF-8"):
+        list(FixtureSource(fixture).fetch(search_phrases=[]))
+
+
 def test_fixture_source_raises_on_missing_required_field(tmp_path):
     fixture = tmp_path / "posts.jsonl"
     fixture.write_text('{"id": "1", "author": "a"}\n')
