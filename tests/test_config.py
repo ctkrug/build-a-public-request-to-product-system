@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from wishwright.config import PolicySet, load_config
 
 
@@ -30,3 +32,20 @@ def test_policy_is_denied_case_insensitive():
     policy = PolicySet(deny_terms=("Forbidden",))
     assert policy.is_denied("this has FORBIDDEN in it")
     assert not policy.is_denied("this is fine")
+
+
+@pytest.mark.parametrize(
+    "contents",
+    [
+        "search_phrases: one phrase\n",
+        "policy:\n  deny_terms: forbidden\n",
+        "policy:\n  min_total_score: .nan\n",
+        "policy:\n  min_total_score: 1.1\n",
+    ],
+)
+def test_load_config_rejects_invalid_policy_shapes_and_thresholds(tmp_path, contents):
+    path = tmp_path / "config.yaml"
+    path.write_text(contents)
+
+    with pytest.raises(ValueError, match="config"):
+        load_config(path)
