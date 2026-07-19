@@ -28,9 +28,12 @@ class FixtureSource:
     def fetch(self, search_phrases: Iterable[str]) -> Iterator[Candidate]:
         if not self.path.exists():
             return
-        with self.path.open() as handle:
-            for line_no, line in enumerate(handle, start=1):
-                line = line.strip()
+        with self.path.open("rb") as handle:
+            for line_no, byte_line in enumerate(handle, start=1):
+                try:
+                    line = byte_line.decode("utf-8").strip()
+                except UnicodeDecodeError as exc:
+                    raise ValueError(f"{self.path}:{line_no}: invalid UTF-8") from exc
                 if not line:
                     continue
                 try:

@@ -27,7 +27,10 @@ def test_fixture_source_raises_on_bad_json(tmp_path):
 
 def test_fixture_source_reports_invalid_utf8_with_path_and_line(tmp_path):
     fixture = tmp_path / "posts.jsonl"
-    fixture.write_bytes(b'{"id": "1"}\n\xff')
+    fixture.write_bytes(
+        b'{"id": "1", "author": "a", "text": "wish", '
+        b'"url": "https://x.com/a/1", "created_at": "2026-07-10T00:00:00Z"}\n\xff'
+    )
 
     with pytest.raises(ValueError, match=rf"{fixture}:2: invalid UTF-8"):
         list(FixtureSource(fixture).fetch(search_phrases=[]))
