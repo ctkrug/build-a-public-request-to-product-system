@@ -18,7 +18,21 @@ class Ledger:
     def _load(self) -> None:
         if not self.path.exists():
             return
-        self._entries = json.loads(self.path.read_text() or "{}")
+        try:
+            entries = json.loads(self.path.read_text() or "{}")
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ValueError(f"invalid ledger at {self.path}") from exc
+        if (
+            not isinstance(entries, dict)
+            or any(
+                not isinstance(candidate_id, str)
+                or not candidate_id.strip()
+                or stage not in STAGES
+                for candidate_id, stage in entries.items()
+            )
+        ):
+            raise ValueError(f"invalid ledger at {self.path}")
+        self._entries = entries
 
     def _save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
