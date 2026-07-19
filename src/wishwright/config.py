@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import math
 from pathlib import Path
 
 import yaml
@@ -52,11 +53,32 @@ def load_config(path: str | Path | None) -> Config:
     if not file_path.exists():
         return Config()
 
-    raw = yaml.safe_load(file_path.read_text()) or {}
-    phrases = tuple(raw.get("search_phrases", DEFAULT_SEARCH_PHRASES))
+    try:
+        raw = yaml.safe_load(file_path.read_text()) or {}
+    except yaml.YAMLError as exc:
+        raise ValueError(f"invalid config YAML in {file_path}") from exc
+    if not isinstance(raw, dict):
+        raise ValueError("config root must be a mapping")
+
+    phrases = _text_list(raw.get("search_phrases", DEFAULT_SEARCH_PHRASES), "search_phrases")
     policy_raw = raw.get("policy", {})
+    if not isinstance(policy_raw, dict):
+        raise ValueError("config policy must be a mapping")
+    deny_terms = _text_list(policy_raw.get("deny_terms", DEFAULT_DENY_TERMS), "policy.deny_terms")
+    try:
+        min_total_score = float(policy_raw.get("min_total_score", 0.5))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("config policy.min_total_score must be a number") from exc
+    if not math.isfinite(min_total_score) or not 0 <= min_total_score <= 1:
+        raise ValueError("config policy.min_total_score must be between 0 and 1")
     policy = PolicySet(
-        deny_terms=tuple(policy_raw.get("deny_terms", DEFAULT_DENY_TERMS)),
-        min_total_score=float(policy_raw.get("min_total_score", 0.5)),
+        deny_terms=deny_terms,
+        min_total_score=min_total_score,
     )
     return Config(search_phrases=phrases, policy=policy)
+
+
+def _text_list(value: object, name: str) -> tuple[str, ...]:
+    if not isinstance(value, list) or not all(isinstance(item, str) and item.strip() for item in value):
+        raise ValueError(f"config {name} must be a list of non-empty strings")
+    return tuple(value)
