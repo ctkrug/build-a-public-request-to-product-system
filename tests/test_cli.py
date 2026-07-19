@@ -171,3 +171,25 @@ def test_evaluate_output_columns_stay_aligned_for_varied_text_lengths(tmp_path, 
     # on every row regardless of how long the candidate id or text is.
     decimal_columns = {line.index(".") for line in data_lines}
     assert len(decimal_columns) == 1
+
+
+def test_evaluate_reports_malformed_fixture_without_a_traceback(tmp_path, capsys):
+    fixture = tmp_path / "posts.jsonl"
+    fixture.write_text("not json\n")
+
+    exit_code = main(["evaluate", "--input", str(fixture)])
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert "invalid JSON" in captured.err
+
+
+def test_status_reports_corrupt_ledger_without_a_traceback(tmp_path, capsys):
+    ledger = tmp_path / "ledger.json"
+    ledger.write_text("not json")
+
+    exit_code = main(["status", "--ledger", str(ledger)])
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert "invalid ledger" in captured.err
