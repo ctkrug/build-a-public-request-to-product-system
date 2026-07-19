@@ -30,3 +30,19 @@ def test_check_ready_flags_missing_ci(tmp_path):
 def test_check_ready_non_directory(tmp_path):
     missing = tmp_path / "nope"
     assert check_ready(missing) == [f"{missing} is not a directory"]
+
+
+def test_check_ready_accepts_yaml_ci_workflow(tmp_path):
+    _make_ready_repo(tmp_path)
+    (tmp_path / ".github" / "workflows" / "ci.yml").unlink()
+    (tmp_path / ".github" / "workflows" / "ci.yaml").write_text("name: ci")
+
+    assert check_ready(tmp_path) == []
+
+
+def test_check_ready_rejects_directories_in_place_of_required_files(tmp_path):
+    _make_ready_repo(tmp_path)
+    (tmp_path / "README.md").unlink()
+    (tmp_path / "README.md").mkdir()
+
+    assert "missing README.md" in check_ready(tmp_path)
