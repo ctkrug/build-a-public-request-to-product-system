@@ -44,6 +44,8 @@ class Ledger:
         return candidate_id in self._entries
 
     def mark_seen(self, candidate_id: str, stage: str = "discovered") -> None:
+        if not isinstance(candidate_id, str) or not candidate_id.strip():
+            raise ValueError("candidate_id must be a non-empty string")
         if stage not in STAGES:
             raise ValueError(f"unknown stage {stage!r}, expected one of {STAGES}")
         self._entries[candidate_id] = stage
