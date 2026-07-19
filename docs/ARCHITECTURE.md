@@ -7,18 +7,18 @@ these stages exist and [`BACKLOG.md`](BACKLOG.md) for what's done vs. planned.
 
 ```
 src/wishwright/
-  models.py       # Candidate, Evaluation dataclasses; STAGES tuple (the pipeline's stage order)
-  config.py       # load_config() reads config.yaml -> Config(search_phrases, PolicySet)
+  models.py       # Candidate, Evaluation dataclasses; validates required text fields; STAGES order
+  config.py       # load_config() reads and validates config.yaml -> Config(search_phrases, PolicySet)
   discovery.py    # CandidateSource protocol; FixtureSource (JSONL, works today);
                   #   XApiSource (stub, raises NotImplementedError until credentials exist)
   evaluation.py   # score_candidate(candidate, policy) -> Evaluation; safety is a hard gate
-  storage.py      # Ledger: JSON-backed {candidate_id: stage} map, atomic writes
+  storage.py      # Ledger: validated JSON-backed {candidate_id: stage} map, atomic writes
   pipeline.py     # advance(ledger, id) steps one stage forward; to_backlog_entry() builds
                   #   a project-factory-shaped brief from an approved candidate
   publish.py      # check_ready(path) verifies README/LICENSE/CI exist on disk before publish
   reply.py        # draft_reply(candidate, repo_url) -> short reply string, <=280 chars
-  runlog.py       # log_event() appends one JSONL line per stage transition to logs/run.jsonl
-  cli.py          # argparse entrypoint: `evaluate` and `status` subcommands
+  runlog.py       # log_event() validates and appends one JSONL line per stage transition
+  cli.py          # argparse entrypoint: `evaluate` and `status`; reports local input errors cleanly
 
 fixtures/sample_posts.jsonl   # sample candidates for local dev/demo/tests, no network needed
 config.example.yaml           # copy to config.yaml (gitignored) to override phrases/policy
@@ -57,6 +57,8 @@ Every `evaluate` run also calls `runlog.log_event` per candidate, appending to
 `config.yaml` (gitignored; copy from `config.example.yaml`) holds `search_phrases` and the
 `policy` block (`deny_terms`, `min_total_score`). `load_config` tolerates a missing file and
 falls back to the in-code defaults in `config.py`, so a fresh checkout works with zero setup.
+Present configuration must be a mapping with non-empty string lists and a finite score threshold
+from 0 through 1; malformed files produce a concise CLI error instead of a traceback.
 
 ## How to run / test
 
@@ -64,11 +66,14 @@ falls back to the in-code defaults in `config.py`, so a fresh checkout works wit
 pip install -e ".[dev]"
 wishwright evaluate --input fixtures/sample_posts.jsonl
 wishwright status
-PYTHONPATH=src python3 -m pytest -q   # or: pytest -q, once installed with -e
+pytest -q
+pytest --cov=wishwright --cov-report=term-missing
 ```
 
 No network access or paid API is required to run the full test suite — everything exercises
-`FixtureSource` and local fixtures. `XApiSource` is a stub; wiring it up is tracked in
+`FixtureSource` and local fixtures. Tests include property checks for scoring invariants. Fixture,
+ledger, and audit-log boundaries reject malformed data before it can reach the state machine.
+`XApiSource` is a stub; wiring it up is tracked in
 `BACKLOG.md` and requires no changes to `evaluation.py`, `storage.py`, `pipeline.py`,
 `publish.py`, or `reply.py` — only a new `CandidateSource` implementation.
 
