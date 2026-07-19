@@ -1,3 +1,5 @@
+import json
+
 from wishwright.cli import main
 
 
@@ -42,3 +44,37 @@ def test_status_reports_zero_counts_for_empty_ledger(tmp_path, capsys):
     out = capsys.readouterr().out
     assert exit_code == 0
     assert "discovered" in out
+    for line in out.splitlines():
+        stage, _, count = line.rpartition(" ")
+        assert count.strip() == "0"
+
+
+def test_status_reports_known_stage_mix(tmp_path, capsys):
+    ledger_path = tmp_path / "ledger.json"
+    ledger_path.write_text(
+        json.dumps(
+            {
+                "1": "discovered",
+                "2": "discovered",
+                "3": "discovered",
+                "4": "evaluated",
+                "5": "built",
+            }
+        )
+    )
+
+    exit_code = main(["status", "--ledger", str(ledger_path)])
+    out = capsys.readouterr().out
+
+    assert exit_code == 0
+    counts = {}
+    for line in out.splitlines():
+        stage, _, count = line.rpartition(" ")
+        counts[stage.strip()] = int(count.strip())
+    assert counts == {
+        "discovered": 3,
+        "evaluated": 1,
+        "built": 1,
+        "published": 0,
+        "replied": 0,
+    }
