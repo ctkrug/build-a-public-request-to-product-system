@@ -42,7 +42,14 @@ run the test suite — discovery and evaluation are exercised against local fixt
 pip install -e ".[dev]"
 wishwright --help
 wishwright evaluate --input fixtures/sample_posts.jsonl
+wishwright status
 ```
+
+Copy `config.example.yaml` to `config.yaml` (gitignored) to override the search phrases or
+safety policy — `evaluate` picks it up automatically if it exists, and falls back to built-in
+defaults otherwise. Every `evaluate` run appends one line per candidate to `logs/run.jsonl`
+(override with `--log`), and `status` reports how many candidates sit in each pipeline stage
+from `state/ledger.json` (override with `--ledger`).
 
 ## Status
 
