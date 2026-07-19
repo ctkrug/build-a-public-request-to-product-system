@@ -3,6 +3,8 @@ its pipeline stage survives process restarts."""
 
 from __future__ import annotations
 
+from contextlib import contextmanager
+import fcntl
 import json
 from pathlib import Path
 
@@ -16,6 +18,7 @@ class Ledger:
         self._load()
 
     def _load(self) -> None:
+        self._entries = {}
         if not self.path.exists():
             return
         try:
@@ -43,13 +46,26 @@ class Ledger:
     def has_seen(self, candidate_id: str) -> bool:
         return candidate_id in self._entries
 
+    @contextmanager
+    def _write_lock(self):
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        lock_path = self.path.with_name(f"{self.path.name}.lock")
+        with lock_path.open("a") as lock_file:
+            fcntl.flock(lock_file, fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(lock_file, fcntl.LOCK_UN)
+
     def mark_seen(self, candidate_id: str, stage: str = "discovered") -> None:
         if not isinstance(candidate_id, str) or not candidate_id.strip():
             raise ValueError("candidate_id must be a non-empty string")
         if stage not in STAGES:
             raise ValueError(f"unknown stage {stage!r}, expected one of {STAGES}")
-        self._entries[candidate_id] = stage
-        self._save()
+        with self._write_lock():
+            self._load()
+            self._entries[candidate_id] = stage
+            self._save()
 
     def stage_of(self, candidate_id: str) -> str | None:
         return self._entries.get(candidate_id)
