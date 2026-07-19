@@ -1,0 +1,16 @@
+search_phrases:
+  - i wish there was an app that
+  - i wish someone would build
+  - someone should build a tool that
+  - does anyone know a tool that
+
+policy:
+  deny_terms:
+    - weapon
+    - explosive
+    - exploit for
+    - hack into
+    - malware
+    - surveil my
+    - stalk
+  min_total_score: 0.5
