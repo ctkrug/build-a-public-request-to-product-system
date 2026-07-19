@@ -14,6 +14,7 @@ from .models import STAGES
 from .storage import Ledger
 
 DEFAULT_LEDGER_PATH = "state/ledger.json"
+DEFAULT_CONFIG_PATH = "config.yaml"
 
 
 def _cmd_evaluate(args: argparse.Namespace) -> int:
@@ -59,7 +60,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     evaluate = subparsers.add_parser("evaluate", help="score candidates from a fixture file")
     evaluate.add_argument("--input", required=True, help="path to a JSONL candidate fixture")
-    evaluate.add_argument("--config", default=None, help="path to config.yaml")
+    evaluate.add_argument(
+        "--config",
+        default=DEFAULT_CONFIG_PATH,
+        help=f"path to config.yaml (default: {DEFAULT_CONFIG_PATH}; falls back to built-in defaults if absent)",
+    )
     evaluate.set_defaults(func=_cmd_evaluate)
 
     status = subparsers.add_parser("status", help="report ledger counts per pipeline stage")
