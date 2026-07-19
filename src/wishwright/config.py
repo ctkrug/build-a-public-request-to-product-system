@@ -79,6 +79,8 @@ def load_config(path: str | Path | None) -> Config:
 
 
 def _text_list(value: object, name: str) -> tuple[str, ...]:
-    if not isinstance(value, list) or not all(isinstance(item, str) and item.strip() for item in value):
+    if not isinstance(value, (list, tuple)) or not all(
+        isinstance(item, str) and item.strip() for item in value
+    ):
         raise ValueError(f"config {name} must be a list of non-empty strings")
     return tuple(value)
