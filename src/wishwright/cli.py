@@ -11,6 +11,7 @@ from .config import load_config
 from .discovery import FixtureSource
 from .evaluation import score_candidate
 from .models import STAGES
+from .runlog import DEFAULT_LOG_PATH, log_event
 from .storage import Ledger
 
 DEFAULT_LEDGER_PATH = "state/ledger.json"
@@ -30,6 +31,12 @@ def _cmd_evaluate(args: argparse.Namespace) -> int:
     for candidate in candidates:
         evaluation = score_candidate(candidate, config.policy)
         rows.append((evaluation.total, candidate, evaluation))
+        log_event(
+            args.log,
+            stage="evaluated",
+            candidate_id=candidate.id,
+            result="approved" if evaluation.approved else "rejected",
+        )
     rows.sort(key=lambda row: row[0], reverse=True)
 
     id_width = max(len(c.id) for _, c, _ in rows)
@@ -64,6 +71,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--config",
         default=DEFAULT_CONFIG_PATH,
         help=f"path to config.yaml (default: {DEFAULT_CONFIG_PATH}; falls back to built-in defaults if absent)",
+    )
+    evaluate.add_argument(
+        "--log",
+        default=DEFAULT_LOG_PATH,
+        help=f"path to the JSONL run log (default: {DEFAULT_LOG_PATH})",
     )
     evaluate.set_defaults(func=_cmd_evaluate)
 
