@@ -39,6 +39,13 @@ def test_narrow_personal_request_scores_lower_than_broad_one():
     assert narrow.breadth < broad.breadth
 
 
+def test_score_equal_to_minimum_threshold_is_approved():
+    evaluation = score_candidate(_candidate("a request"), PolicySet(min_total_score=0.6667))
+
+    assert evaluation.total == 0.6667
+    assert evaluation.approved
+
+
 @given(st.text())
 def test_scoring_stays_within_its_public_score_range(text):
     evaluation = score_candidate(_candidate(text), PolicySet(deny_terms=()))
