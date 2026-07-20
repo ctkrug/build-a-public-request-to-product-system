@@ -136,9 +136,10 @@ orchestrator = Orchestrator(Ledger("state/ledger.json"), builder, reply_delivery
 stage = orchestrator.process(candidate, evaluation, authorized_reply=True)
 ```
 
-For publishing, pass a `ResumablePublisher` that uses `git_push_repository`, a deployment command
-appropriate for `apps.charliekrug.com`, and `verify_public_url`. It skips destinations that are
-already public and only allows the ledger to move to `published` after both URLs verify.
+For publishing, construct `ResumablePublisher(git_push_repository,
+CommandSiteDeployer(("your-deployer", "{site_path}")), verify_public_url)`. The site deployment
+is an argument vector rather than a shell string. It skips destinations already public and only
+allows the ledger to move to `published` after both URLs verify.
 
 ## Configure the policy
 
