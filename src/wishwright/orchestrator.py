@@ -11,6 +11,7 @@ from urllib.request import Request, urlopen
 
 from .models import Candidate, Evaluation
 from .pipeline import advance, to_backlog_entry
+from .reply import ReplyDelivery
 from .storage import Ledger
 
 
@@ -169,40 +170,47 @@ class Orchestrator:
         ledger: Ledger,
         build_system: BuildSystem,
         publisher: Publisher | None = None,
+        reply_delivery: ReplyDelivery | None = None,
         artifacts_path: str | Path = "state/build-artifacts.json",
     ):
         self.ledger = ledger
         self.build_system = build_system
         self.publisher = publisher
+        self.reply_delivery = reply_delivery
         self.artifacts = BuildArtifactStore(artifacts_path)
 
-    def process(self, candidate: Candidate, evaluation: Evaluation) -> str:
+    def process(
+        self, candidate: Candidate, evaluation: Evaluation, *, authorized_reply: bool = False
+    ) -> str:
         if candidate.id != evaluation.candidate_id:
             raise ValueError("candidate and evaluation IDs must match")
         if self.ledger.stage_of(candidate.id) is None:
             self.ledger.mark_seen(candidate.id)
         if self.ledger.stage_of(candidate.id) == "discovered":
             advance(self.ledger, candidate.id)
-        if self.ledger.stage_of(candidate.id) != "evaluated" or not evaluation.approved:
-            return self.ledger.stage_of(candidate.id) or "discovered"
-
         result = self.artifacts.get(candidate.id)
-        if result is None:
-            result = self.build_system.submit(to_backlog_entry(candidate, evaluation), candidate.id)
-        if result.completed:
-            if (
-                not result.repo_path
-                or not result.repo_url
-                or not result.site_path
-                or not result.site_url
-            ):
-                raise ValueError("completed build result must include repository and site details")
-            self.artifacts.save(candidate.id, result)
-            advance(self.ledger, candidate.id)
-        if (
-            self.ledger.stage_of(candidate.id) == "built"
-            and self.publisher
-            and self.publisher.publish(result)
-        ):
-            advance(self.ledger, candidate.id)
+        if self.ledger.stage_of(candidate.id) == "evaluated" and evaluation.approved:
+            if result is None:
+                result = self.build_system.submit(
+                    to_backlog_entry(candidate, evaluation), candidate.id
+                )
+            if result.completed:
+                if not all((result.repo_path, result.repo_url, result.site_path, result.site_url)):
+                    raise ValueError(
+                        "completed build result must include repository and site details"
+                    )
+                self.artifacts.save(candidate.id, result)
+                advance(self.ledger, candidate.id)
+        if self.ledger.stage_of(candidate.id) == "built" and self.publisher:
+            result = result or self.artifacts.get(candidate.id)
+            if result is None:
+                raise ValueError("built candidate has no stored build artifact")
+            if self.publisher.publish(result):
+                advance(self.ledger, candidate.id)
+        if self.ledger.stage_of(candidate.id) == "published" and self.reply_delivery:
+            result = result or self.artifacts.get(candidate.id)
+            if result is None or not result.repo_url:
+                raise ValueError("published candidate has no stored repository URL")
+            if self.reply_delivery.deliver(candidate, result.repo_url, authorized=authorized_reply):
+                advance(self.ledger, candidate.id)
         return self.ledger.stage_of(candidate.id) or "discovered"
