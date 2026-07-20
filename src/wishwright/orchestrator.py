@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import fcntl
 import json
 from pathlib import Path
 from typing import Any, Callable, Mapping, Protocol
@@ -30,6 +31,73 @@ class BuildResult:
 
 class BuildSystem(Protocol):
     def submit(self, brief: dict, idempotency_key: str) -> BuildResult: ...
+
+
+class Publisher(Protocol):
+    def publish(self, build: BuildResult) -> bool: ...
+
+
+class BuildArtifactStore:
+    """Durably retain confirmed artifacts across publication retries."""
+
+    _fields = ("repo_path", "repo_url", "site_path", "site_url")
+
+    def __init__(self, path: str | Path):
+        self.path = Path(path)
+
+    def get(self, candidate_id: str) -> BuildResult | None:
+        artifact = self._load().get(candidate_id)
+        if artifact is None:
+            return None
+        return BuildResult(
+            completed=True,
+            repo_path=Path(artifact["repo_path"]),
+            repo_url=artifact["repo_url"],
+            site_path=Path(artifact["site_path"]),
+            site_url=artifact["site_url"],
+        )
+
+    def save(self, candidate_id: str, build: BuildResult) -> None:
+        if not build.completed or not all(
+            (build.repo_path, build.repo_url, build.site_path, build.site_url)
+        ):
+            raise ValueError("cannot store an incomplete build artifact")
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        lock_path = self.path.with_name(f"{self.path.name}.lock")
+        with lock_path.open("a") as lock_file:
+            fcntl.flock(lock_file, fcntl.LOCK_EX)
+            try:
+                entries = self._load()
+                entries[candidate_id] = {
+                    "repo_path": str(build.repo_path),
+                    "repo_url": build.repo_url,
+                    "site_path": str(build.site_path),
+                    "site_url": build.site_url,
+                }
+                temporary = self.path.with_suffix(self.path.suffix + ".tmp")
+                temporary.write_text(json.dumps(entries, indent=2, sort_keys=True))
+                temporary.replace(self.path)
+            finally:
+                fcntl.flock(lock_file, fcntl.LOCK_UN)
+
+    def _load(self) -> dict[str, dict[str, str]]:
+        if not self.path.exists():
+            return {}
+        try:
+            entries = json.loads(self.path.read_text())
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ValueError(f"invalid build artifact store at {self.path}") from exc
+        if not isinstance(entries, dict) or any(
+            not isinstance(candidate_id, str)
+            or not isinstance(artifact, dict)
+            or any(
+                not isinstance(artifact.get(field), str) or not artifact[field]
+                for field in self._fields
+            )
+            for candidate_id, artifact in entries.items()
+        ):
+            raise ValueError(f"invalid build artifact store at {self.path}")
+        return entries
 
 
 class HttpBuildSystem:
@@ -96,9 +164,17 @@ class HttpBuildSystem:
 class Orchestrator:
     """Submit approved briefs once, advancing only after build confirmation."""
 
-    def __init__(self, ledger: Ledger, build_system: BuildSystem):
+    def __init__(
+        self,
+        ledger: Ledger,
+        build_system: BuildSystem,
+        publisher: Publisher | None = None,
+        artifacts_path: str | Path = "state/build-artifacts.json",
+    ):
         self.ledger = ledger
         self.build_system = build_system
+        self.publisher = publisher
+        self.artifacts = BuildArtifactStore(artifacts_path)
 
     def process(self, candidate: Candidate, evaluation: Evaluation) -> str:
         if candidate.id != evaluation.candidate_id:
@@ -110,7 +186,9 @@ class Orchestrator:
         if self.ledger.stage_of(candidate.id) != "evaluated" or not evaluation.approved:
             return self.ledger.stage_of(candidate.id) or "discovered"
 
-        result = self.build_system.submit(to_backlog_entry(candidate, evaluation), candidate.id)
+        result = self.artifacts.get(candidate.id)
+        if result is None:
+            result = self.build_system.submit(to_backlog_entry(candidate, evaluation), candidate.id)
         if result.completed:
             if (
                 not result.repo_path
@@ -119,5 +197,12 @@ class Orchestrator:
                 or not result.site_url
             ):
                 raise ValueError("completed build result must include repository and site details")
+            self.artifacts.save(candidate.id, result)
+            advance(self.ledger, candidate.id)
+        if (
+            self.ledger.stage_of(candidate.id) == "built"
+            and self.publisher
+            and self.publisher.publish(result)
+        ):
             advance(self.ledger, candidate.id)
         return self.ledger.stage_of(candidate.id) or "discovered"
