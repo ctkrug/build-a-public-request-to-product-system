@@ -69,6 +69,27 @@ def git_push_repository(path: Path) -> None:
     subprocess.run(["git", "-C", str(path), "push", "origin", "HEAD"], check=True)
 
 
+class CommandSiteDeployer:
+    """Run an explicitly configured static-site deployment command safely."""
+
+    def __init__(
+        self, command: tuple[str, ...], run: Callable[[tuple[str, ...]], None] | None = None
+    ):
+        if not command or any(not isinstance(part, str) or not part for part in command):
+            raise ValueError("site deployment command must contain non-empty arguments")
+        if "{site_path}" not in command:
+            raise ValueError("site deployment command must include a {site_path} argument")
+        self.command = command
+        self._run = run or self._run_command
+
+    def __call__(self, path: Path) -> None:
+        self._run(tuple(str(path) if part == "{site_path}" else part for part in self.command))
+
+    @staticmethod
+    def _run_command(command: tuple[str, ...]) -> None:
+        subprocess.run(command, check=True)
+
+
 def verify_public_url(url: str) -> bool:
     """Return whether a public repository or deployed site responds successfully."""
     if not url.startswith("https://"):
