@@ -5,7 +5,13 @@ from wishwright.reply import draft_reply
 
 
 def _candidate() -> Candidate:
-    return Candidate(id="1", author="alice", text="wish", url="https://x.com/alice/1", created_at="2026-07-10T00:00:00Z")
+    return Candidate(
+        id="1",
+        author="alice",
+        text="wish",
+        url="https://x.com/alice/1",
+        created_at="2026-07-10T00:00:00Z",
+    )
 
 
 def test_draft_reply_includes_repo_url_and_fits_length():

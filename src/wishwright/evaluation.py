@@ -17,7 +17,9 @@ PERSONAL_HINTS = ("for my", "just for me", "my specific", "my own use case")
 FEASIBILITY_HINTS = ("app", "tool", "extension", "bot", "script", "site", "dashboard")
 
 
-def _keyword_score(text: str, positive: tuple[str, ...], negative: tuple[str, ...] = ()) -> float:
+def _keyword_score(
+    text: str, positive: tuple[str, ...], negative: tuple[str, ...] = ()
+) -> float:
     lowered = text.lower()
     score = 0.5
     if any(term in lowered for term in positive):

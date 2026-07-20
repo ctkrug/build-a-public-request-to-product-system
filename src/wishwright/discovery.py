@@ -51,4 +51,6 @@ class XApiSource:
         self.bearer_token = bearer_token
 
     def fetch(self, search_phrases: Iterable[str]) -> Iterator[Candidate]:
-        raise NotImplementedError("XApiSource is not implemented yet — use FixtureSource")
+        raise NotImplementedError(
+            "XApiSource is not implemented yet — use FixtureSource"
+        )

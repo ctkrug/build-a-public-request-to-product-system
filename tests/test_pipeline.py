@@ -27,12 +27,18 @@ def test_advance_on_unknown_candidate_returns_none(tmp_path):
 
 def _candidate() -> Candidate:
     return Candidate(
-        id="1", author="alice", text="i wish there was a tool", url="https://x.com/alice/1", created_at="2026-07-10T00:00:00Z"
+        id="1",
+        author="alice",
+        text="i wish there was a tool",
+        url="https://x.com/alice/1",
+        created_at="2026-07-10T00:00:00Z",
     )
 
 
 def test_to_backlog_entry_matches_expected_schema():
-    evaluation = Evaluation(candidate_id="1", safety=1.0, feasibility=0.8, breadth=0.9, total=0.9)
+    evaluation = Evaluation(
+        candidate_id="1", safety=1.0, feasibility=0.8, breadth=0.9, total=0.9
+    )
     entry = to_backlog_entry(_candidate(), evaluation)
     assert entry["title"] == "i wish there was a tool"
     assert entry["category"] == "misc"
@@ -40,6 +46,8 @@ def test_to_backlog_entry_matches_expected_schema():
 
 
 def test_to_backlog_entry_rejects_unapproved_candidate():
-    evaluation = Evaluation(candidate_id="1", safety=0.0, feasibility=0.0, breadth=0.0, total=0.0)
+    evaluation = Evaluation(
+        candidate_id="1", safety=0.0, feasibility=0.0, breadth=0.0, total=0.0
+    )
     with pytest.raises(ValueError, match="not approved"):
         to_backlog_entry(_candidate(), evaluation)

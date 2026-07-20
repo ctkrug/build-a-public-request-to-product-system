@@ -14,5 +14,7 @@ def draft_reply(candidate: Candidate, repo_url: str) -> str:
 
     message = f"You asked, so I built it: {repo_url}"
     if len(message) > MAX_REPLY_LENGTH:
-        raise ValueError(f"drafted reply exceeds {MAX_REPLY_LENGTH} chars: {len(message)}")
+        raise ValueError(
+            f"drafted reply exceeds {MAX_REPLY_LENGTH} chars: {len(message)}"
+        )
     return message
