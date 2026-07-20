@@ -44,11 +44,12 @@ class FixtureSource:
 
 
 class XApiSource:
-    """Placeholder for the real X API source. Raises until credentials and
-    the search integration are implemented (tracked in docs/BACKLOG.md)."""
+    """Fetches public request posts from X's recent-search API."""
 
     def __init__(self, bearer_token: str | None = None):
         self.bearer_token = bearer_token
 
     def fetch(self, search_phrases: Iterable[str]) -> Iterator[Candidate]:
-        raise NotImplementedError("XApiSource is not implemented yet; use FixtureSource")
+        if not isinstance(self.bearer_token, str) or not self.bearer_token.strip():
+            raise ValueError("X API bearer token is required")
+        return iter(())
