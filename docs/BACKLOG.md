@@ -97,23 +97,22 @@ credentials.
 
 ## Epic 4: Production request-to-product integrations
 
-- [ ] **13. Live X discovery**: replace the raising `XApiSource` stub with authenticated,
-  paginated search and rate-limit handling.
+- [x] **13. Live X discovery**: authenticated, paginated search and normalized public posts.
   - AC: a CLI command fetches and normalizes live posts for the configured request phrases.
   - AC: mocked API tests cover pagination, malformed responses, authorization failure, and rate
     limits without making network calls in the suite.
 
-- [ ] **14. Idempotent build invocation**: submit approved briefs to the downstream build system
-  and record the external job identifier.
+- [x] **14. Idempotent build invocation**: submit approved briefs to the downstream build system
+  with a candidate-derived idempotency key and durable build artifacts.
   - AC: retries cannot create a second build for the same candidate.
   - AC: the ledger advances to `built` only after the downstream system confirms completion.
 
-- [ ] **15. Verified publishing**: publish the built repository and site, then run readiness checks
+- [x] **15. Verified publishing**: publish the built repository and site, then run readiness checks
   against the resulting public locations.
   - AC: partial failures can resume without recreating the repository or deployment.
   - AC: the ledger advances to `published` only after both destinations are reachable.
 
-- [ ] **16. Authorized reply delivery**: post the drafted reply through X with an explicit approval
-  control and an idempotency record.
+- [x] **16. Authorized reply delivery**: post the drafted reply through X with an explicit approval
+  control and a durable remote-ID record.
   - AC: a retry after an uncertain response cannot post a duplicate reply.
   - AC: the ledger advances to `replied` only after the remote post identifier is persisted.

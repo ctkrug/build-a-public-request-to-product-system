@@ -11,8 +11,9 @@ Wishwright is a Python CLI and library for indie developers who want product ide
 public requests. It ranks request-shaped posts, blocks configured safety terms, records an audit
 trail, and converts approved candidates into structured briefs for a downstream build system.
 
-The current release works from local JSONL fixtures. The X API source, build-system invocation,
-publishing, and reply delivery are explicit integration boundaries, not hidden network behavior.
+The local CLI works from JSONL fixtures. Production integrations are explicit library boundaries:
+an authenticated X search source, idempotent build-service client, resumable publisher, and an
+explicitly authorized X reply delivery service.
 
 ## See the result
 
@@ -43,6 +44,8 @@ project-factory backlog shape with `wishwright.pipeline.to_backlog_entry`.
   rationale, and component scores expected by a downstream project backlog.
 - **Auditable local runs.** Each evaluation appends a timestamped JSONL event that can be inspected
   without a database or hosted service.
+- **Confirmed production transitions.** Build artifacts, verified publication, and X reply IDs are
+  recorded durably; a restart resumes the remaining work instead of advancing optimistically.
 
 ## Install
 
@@ -112,6 +115,30 @@ candidate = Candidate.from_dict(
 evaluation = score_candidate(candidate, PolicySet())
 brief = to_backlog_entry(candidate, evaluation)
 ```
+
+### Run production integrations
+
+Construct the production collaborators with credentials supplied by your deployment environment;
+the library never reads secrets from files or posts a reply without `authorized_reply=True`.
+
+```python
+from wishwright.discovery import XApiSource
+from wishwright.orchestrator import HttpBuildSystem, Orchestrator
+from wishwright.reply import ReplyDelivery, XReplyClient
+from wishwright.storage import Ledger
+
+source = XApiSource(bearer_token=x_bearer_token)
+builder = HttpBuildSystem(build_endpoint, build_bearer_token)
+replies = ReplyDelivery(XReplyClient(x_bearer_token), "state/replies.json")
+orchestrator = Orchestrator(Ledger("state/ledger.json"), builder, reply_delivery=replies)
+
+# Evaluate each candidate, then explicitly approve the outward-facing reply.
+stage = orchestrator.process(candidate, evaluation, authorized_reply=True)
+```
+
+For publishing, pass a `ResumablePublisher` that uses `git_push_repository`, a deployment command
+appropriate for `apps.charliekrug.com`, and `verify_public_url`. It skips destinations that are
+already public and only allows the ledger to move to `published` after both URLs verify.
 
 ## Configure the policy
 
