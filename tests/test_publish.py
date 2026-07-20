@@ -1,5 +1,14 @@
 from wishwright.orchestrator import BuildResult
-from wishwright.publish import CommandSiteDeployer, ResumablePublisher, check_ready
+import pytest
+
+from wishwright import publish
+from wishwright.publish import (
+    CommandSiteDeployer,
+    ResumablePublisher,
+    check_ready,
+    git_push_repository,
+    verify_public_url,
+)
 
 
 def _make_ready_repo(path):
@@ -80,3 +89,18 @@ def test_command_site_deployer_interpolates_only_the_site_path(tmp_path):
     deploy(tmp_path / "site")
 
     assert calls == [("deploy-static", "--directory", str(tmp_path / "site"))]
+
+
+def test_production_publish_helpers_use_argument_vectors(monkeypatch, tmp_path):
+    calls = []
+    monkeypatch.setattr(publish.subprocess, "run", lambda command, check: calls.append(command))
+
+    git_push_repository(tmp_path / "repo")
+    CommandSiteDeployer(("deploy-static", "{site_path}"))(tmp_path / "site")
+
+    assert calls == [
+        ["git", "-C", str(tmp_path / "repo"), "push", "origin", "HEAD"],
+        ("deploy-static", str(tmp_path / "site")),
+    ]
+    with pytest.raises(ValueError, match="https"):
+        verify_public_url("http://example.test")
