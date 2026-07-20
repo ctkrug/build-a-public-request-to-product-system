@@ -1,61 +1,158 @@
 # Wishwright
 
-**Wishwright** finds public "I wish this existed" posts on X, evaluates whether the request is
-safe and broadly useful to build, and — for the ones that clear the bar — turns them into a
-finished, published product with a reply back to the original poster.
+**▶ Live page: [apps.charliekrug.com/build-a-public-request-to-product-system](https://apps.charliekrug.com/build-a-public-request-to-product-system/)**
 
-It is the pipeline that sits *in front of* a build system: discovery and evaluation are fully
-scoped here; build/publish/reply stages hand off to whatever project-generation tooling produces
-the actual product (see [`docs/VISION.md`](docs/VISION.md) for the full design).
+[![CI](https://github.com/ctkrug/build-a-public-request-to-product-system/actions/workflows/ci.yml/badge.svg)](https://github.com/ctkrug/build-a-public-request-to-product-system/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-b52f28.svg)](LICENSE)
 
-## Why
+**Turn public wishes into safer build briefs.**
 
-People ask for tools publicly all the time — "does anyone know an app that...", "I wish someone
-would build...", "someone should make a...". Almost none of those requests get built. Wishwright
-is a system for closing that loop automatically, safely, and transparently: every step from
-"found the post" to "shipped the reply" is auditable.
+Wishwright is a Python CLI and library for indie developers who want product ideas grounded in
+public requests. It ranks request-shaped posts, blocks configured safety terms, records an audit
+trail, and converts approved candidates into structured briefs for a downstream build system.
 
-## Planned features
+The current release works from local JSONL fixtures. The X API source, build-system invocation,
+publishing, and reply delivery are explicit integration boundaries, not hidden network behavior.
 
-- **Discovery** — pluggable sources (X API, fixtures for testing) driven by configurable search
-  phrases.
-- **Evaluation** — a scoring rubric (safety, feasibility, breadth of usefulness) with a hard
-  deny-list; nothing unsafe or narrowly personal gets built.
-- **Ledger** — every candidate is tracked exactly once; nothing is re-processed or lost across
-  restarts.
-- **Build handoff** — approved candidates are converted into a structured project brief ready to
-  feed a build pipeline.
-- **Publish checks** — a repo isn't marked publishable until it has the basics (README, LICENSE,
-  CI) in place.
-- **Reply drafting** — a short, honest reply linking back to the finished product.
-- **Status & audit log** — `wishwright status` reports pipeline-stage counts; every transition is
-  appended to a structured run log.
+## See the result
 
-## Stack
+Run the included fixture batch:
 
-Python 3.12, standard library + PyYAML for config. No network calls or paid APIs are required to
-run the test suite — discovery and evaluation are exercised against local fixtures.
+```console
+$ wishwright evaluate --input fixtures/sample_posts.jsonl
+id  score  text
+---------------
+1   1.00  I wish there was an app that everyone could use to split gr…
+4   1.00  does anyone know a tool that lets people compare grocery pr…
+2   0.67  someone should build a tool that reminds just for me about …
+3   0.00  i wish there was an app that could hack into my ex's email …
+```
 
-## Getting started
+The denied request receives a zero before any build handoff. Approved rows can be converted to the
+project-factory backlog shape with `wishwright.pipeline.to_backlog_entry`.
+
+## What it gives you
+
+- **A ranked shortlist from real request text.** `evaluate` scores safety, feasibility, and breadth
+  on a 0 to 1 scale and prints the strongest candidates first.
+- **A hard safety stop.** Any configured deny-list match forces the total to `0.0`; usefulness
+  cannot outweigh a safety match.
+- **Restart-safe stage tracking.** The locked JSON ledger preserves one stage per candidate and
+  prevents stale processes from overwriting each other's entries.
+- **Build-ready records.** Approved candidates become dictionaries containing the title, source,
+  rationale, and component scores expected by a downstream project backlog.
+- **Auditable local runs.** Each evaluation appends a timestamped JSONL event that can be inspected
+  without a database or hosted service.
+
+## Install
+
+Wishwright requires Python 3.11 or newer.
+
+```bash
+git clone https://github.com/ctkrug/build-a-public-request-to-product-system.git
+cd build-a-public-request-to-product-system
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .
+```
+
+For tests and quality checks, install the development extra:
 
 ```bash
 pip install -e ".[dev]"
-wishwright --help
-wishwright evaluate --input fixtures/sample_posts.jsonl
-wishwright status
 ```
 
-Copy `config.example.yaml` to `config.yaml` (gitignored) to override the search phrases or
-safety policy — `evaluate` picks it up automatically if it exists, and falls back to built-in
-defaults otherwise. Every `evaluate` run appends one line per candidate to `logs/run.jsonl`
-(override with `--log`), and `status` reports how many candidates sit in each pipeline stage
-from `state/ledger.json` (override with `--ledger`).
+## Use it
 
-## Status
+### Rank a fixture batch
 
-Early scope/build stage — see [`docs/BACKLOG.md`](docs/BACKLOG.md) for what's implemented vs.
-planned.
+Each non-empty line must be a JSON object with `id`, `author`, `text`, `url`, and `created_at`.
+
+```bash
+wishwright evaluate \
+  --input fixtures/sample_posts.jsonl \
+  --config config.example.yaml \
+  --log logs/run.jsonl
+```
+
+Malformed JSON, invalid UTF-8, invalid configuration, and corrupt ledgers return a concise error
+and a nonzero exit code instead of a traceback.
+
+### Inspect pipeline state
+
+```bash
+wishwright status --ledger state/ledger.json
+```
+
+```text
+discovered  0
+evaluated   0
+built       0
+published   0
+replied     0
+```
+
+### Create a downstream build brief
+
+```python
+from wishwright.config import PolicySet
+from wishwright.evaluation import score_candidate
+from wishwright.models import Candidate
+from wishwright.pipeline import to_backlog_entry
+
+candidate = Candidate.from_dict(
+    {
+        "id": "123",
+        "author": "maker",
+        "text": "I wish there were a tool people could use to compare grocery prices",
+        "url": "https://x.com/maker/status/123",
+        "created_at": "2026-07-20T10:00:00Z",
+    }
+)
+evaluation = score_candidate(candidate, PolicySet())
+brief = to_backlog_entry(candidate, evaluation)
+```
+
+## Configure the policy
+
+Copy `config.example.yaml` to `config.yaml`, which is ignored by Git. Search phrases and safety
+terms are case-insensitive substring matches; `min_total_score` accepts values from `0` through
+`1`.
+
+```yaml
+search_phrases:
+  - i wish someone would build
+
+policy:
+  deny_terms:
+    - malware
+    - hack into
+  min_total_score: 0.5
+```
+
+## Project map
+
+- [`docs/VISION.md`](docs/VISION.md) defines the full request-to-product goal and the unfinished
+  integrations required to reach it.
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) follows data through discovery, scoring, storage,
+  handoff, readiness checks, and reply drafting.
+- [`docs/BACKLOG.md`](docs/BACKLOG.md) records the accepted local MVP stories.
+- [`docs/DESIGN.md`](docs/DESIGN.md) specifies the landing page's risograph dispatch system.
+- [`docs/POSITIONING.md`](docs/POSITIONING.md) locks the audience, name, promise, and copy voice.
+
+## Develop
+
+```bash
+ruff check src tests
+ruff format --check src tests
+mypy
+pytest -q --cov --cov-report=term-missing
+```
+
+The suite uses local files only. CI runs on Python 3.11 and 3.12 and enforces an 85% coverage floor.
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE).
+[MIT](LICENSE) © Charlie Krug
+
+More of Charlie's projects: [apps.charliekrug.com](https://apps.charliekrug.com)
