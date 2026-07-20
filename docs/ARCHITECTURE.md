@@ -23,6 +23,10 @@ src/wishwright/
 fixtures/sample_posts.jsonl   # sample candidates for local dev/demo/tests, no network needed
 config.example.yaml           # copy to config.yaml (gitignored) to override phrases/policy
 tests/                        # one test file per module, mirrors src/wishwright/ 1:1
+site/index.html                # self-contained portfolio landing page and real fixture sample
+docs/DESIGN.md                # visual tokens and responsive layout intent for the landing page
+docs/POSITIONING.md           # audience, product promise, name, and copy voice
+docs/launch/devto.md          # first-person technical launch article
 ```
 
 ## Data flow
