@@ -4,6 +4,11 @@ allowed to be marked publishable."""
 from __future__ import annotations
 
 from pathlib import Path
+import subprocess
+from typing import Callable
+from urllib.request import Request, urlopen
+
+from .orchestrator import BuildResult
 
 REQUIRED_FILES = ("README.md", "LICENSE")
 REQUIRED_CI_GLOBS = (".github/workflows/*.yml", ".github/workflows/*.yaml")
@@ -28,3 +33,48 @@ def check_ready(path: str | Path) -> list[str]:
         reasons.append("missing a CI workflow under .github/workflows/")
 
     return reasons
+
+
+class ResumablePublisher:
+    """Publish only targets that are not already publicly verifiable."""
+
+    def __init__(
+        self,
+        push_repository: Callable[[Path], None],
+        deploy_site: Callable[[Path], None],
+        verify_url: Callable[[str], bool],
+    ):
+        self._push_repository = push_repository
+        self._deploy_site = deploy_site
+        self._verify_url = verify_url
+
+    def publish(self, build: BuildResult) -> bool:
+        if not build.completed or not all(
+            (build.repo_path, build.repo_url, build.site_path, build.site_url)
+        ):
+            raise ValueError("a completed build with publication details is required")
+        if not self._verify_url(build.repo_url):
+            self._push_repository(build.repo_path)
+            if not self._verify_url(build.repo_url):
+                return False
+        if not self._verify_url(build.site_url):
+            self._deploy_site(build.site_path)
+            if not self._verify_url(build.site_url):
+                return False
+        return True
+
+
+def git_push_repository(path: Path) -> None:
+    """Push the built repository to its configured origin."""
+    subprocess.run(["git", "-C", str(path), "push", "origin", "HEAD"], check=True)
+
+
+def verify_public_url(url: str) -> bool:
+    """Return whether a public repository or deployed site responds successfully."""
+    if not url.startswith("https://"):
+        raise ValueError("publication URL must use https://")
+    try:
+        with urlopen(Request(url, method="HEAD"), timeout=20) as response:  # noqa: S310
+            return 200 <= response.status < 400
+    except OSError:
+        return False
