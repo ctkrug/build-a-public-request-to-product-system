@@ -67,3 +67,13 @@ def test_x_reply_client_posts_to_source_candidate():
         "text": "Built it",
         "reply": {"in_reply_to_tweet_id": "1"},
     }
+
+
+def test_x_reply_client_rejects_missing_credentials_and_response_id():
+    with pytest.raises(ValueError, match="bearer token"):
+        XReplyClient(" ")
+
+    with pytest.raises(ValueError, match="post ID"):
+        XReplyClient("token", request=lambda request: {"data": {}}).create_reply(
+            _candidate(), "Built it"
+        )
