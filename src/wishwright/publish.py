@@ -23,9 +23,7 @@ def check_ready(path: str | Path) -> list[str]:
             reasons.append(f"missing {name}")
 
     if not any(
-        workflow.is_file()
-        for pattern in REQUIRED_CI_GLOBS
-        for workflow in root.glob(pattern)
+        workflow.is_file() for pattern in REQUIRED_CI_GLOBS for workflow in root.glob(pattern)
     ):
         reasons.append("missing a CI workflow under .github/workflows/")
 

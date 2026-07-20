@@ -25,16 +25,12 @@ def to_backlog_entry(candidate: Candidate, evaluation: Evaluation) -> dict:
     entry: title, category, and why_impressive are the fields the factory's
     ideas.yaml schema requires."""
     if not evaluation.approved:
-        raise ValueError(
-            f"candidate {candidate.id} was not approved (total={evaluation.total})"
-        )
+        raise ValueError(f"candidate {candidate.id} was not approved (total={evaluation.total})")
 
     return {
         "title": candidate.text.strip(),
         "category": "misc",
-        "why_impressive": (
-            f"Directly requested publicly by @{candidate.author}: {candidate.url}"
-        ),
+        "why_impressive": (f"Directly requested publicly by @{candidate.author}: {candidate.url}"),
         "source_candidate_id": candidate.id,
         "source_url": candidate.url,
         "scores": {

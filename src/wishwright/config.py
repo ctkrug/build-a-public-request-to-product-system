@@ -60,15 +60,11 @@ def load_config(path: str | Path | None) -> Config:
     if not isinstance(raw, dict):
         raise ValueError("config root must be a mapping")
 
-    phrases = _text_list(
-        raw.get("search_phrases", DEFAULT_SEARCH_PHRASES), "search_phrases"
-    )
+    phrases = _text_list(raw.get("search_phrases", DEFAULT_SEARCH_PHRASES), "search_phrases")
     policy_raw = raw.get("policy", {})
     if not isinstance(policy_raw, dict):
         raise ValueError("config policy must be a mapping")
-    deny_terms = _text_list(
-        policy_raw.get("deny_terms", DEFAULT_DENY_TERMS), "policy.deny_terms"
-    )
+    deny_terms = _text_list(policy_raw.get("deny_terms", DEFAULT_DENY_TERMS), "policy.deny_terms")
     try:
         min_total_score = float(policy_raw.get("min_total_score", 0.5))
     except (TypeError, ValueError) as exc:

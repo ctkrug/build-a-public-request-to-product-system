@@ -68,12 +68,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=__version__)
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    evaluate = subparsers.add_parser(
-        "evaluate", help="score candidates from a fixture file"
-    )
-    evaluate.add_argument(
-        "--input", required=True, help="path to a JSONL candidate fixture"
-    )
+    evaluate = subparsers.add_parser("evaluate", help="score candidates from a fixture file")
+    evaluate.add_argument("--input", required=True, help="path to a JSONL candidate fixture")
     evaluate.add_argument(
         "--config",
         default=DEFAULT_CONFIG_PATH,
@@ -86,9 +82,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     evaluate.set_defaults(func=_cmd_evaluate)
 
-    status = subparsers.add_parser(
-        "status", help="report ledger counts per pipeline stage"
-    )
+    status = subparsers.add_parser("status", help="report ledger counts per pipeline stage")
     status.add_argument(
         "--ledger", default=DEFAULT_LEDGER_PATH, help="path to the ledger JSON file"
     )

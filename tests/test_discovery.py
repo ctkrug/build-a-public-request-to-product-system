@@ -14,9 +14,7 @@ def test_fixture_source_yields_candidates(tmp_path):
 
 
 def test_fixture_source_missing_file_yields_nothing(tmp_path):
-    candidates = list(
-        FixtureSource(tmp_path / "missing.jsonl").fetch(search_phrases=[])
-    )
+    candidates = list(FixtureSource(tmp_path / "missing.jsonl").fetch(search_phrases=[]))
     assert candidates == []
 
 

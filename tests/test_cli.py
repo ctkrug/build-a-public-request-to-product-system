@@ -128,17 +128,13 @@ def test_help_lists_every_subcommand_with_a_description(capsys):
         parser.parse_args(["--help"])
     out = capsys.readouterr().out
 
-    subparsers_action = next(
-        action for action in parser._actions if action.dest == "command"
-    )
+    subparsers_action = next(action for action in parser._actions if action.dest == "command")
     assert subparsers_action.choices, "no subcommands registered"
     # each subcommand needs a name AND a non-empty one-line description, and
     # both must actually show up in --help output
     for choice_pseudo_action in subparsers_action._choices_actions:
         assert choice_pseudo_action.dest in out
-        assert choice_pseudo_action.help, (
-            f"{choice_pseudo_action.dest} has no help text"
-        )
+        assert choice_pseudo_action.help, f"{choice_pseudo_action.dest} has no help text"
         assert choice_pseudo_action.help in out
 
 
@@ -158,16 +154,12 @@ def test_evaluate_output_columns_stay_aligned_for_varied_text_lengths(tmp_path, 
         + "\n"
     )
 
-    exit_code = main(
-        ["evaluate", "--input", str(fixture), "--log", str(tmp_path / "run.jsonl")]
-    )
+    exit_code = main(["evaluate", "--input", str(fixture), "--log", str(tmp_path / "run.jsonl")])
     out = capsys.readouterr().out
     assert exit_code == 0
 
     lines = out.splitlines()
-    data_lines = [
-        line for line in lines if line.startswith(("short", "much-longer-id"))
-    ]
+    data_lines = [line for line in lines if line.startswith(("short", "much-longer-id"))]
     assert len(data_lines) == 2
 
     # score is formatted "%5.2f" (one digit before the decimal point, since

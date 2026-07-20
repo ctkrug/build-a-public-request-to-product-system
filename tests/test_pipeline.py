@@ -36,9 +36,7 @@ def _candidate() -> Candidate:
 
 
 def test_to_backlog_entry_matches_expected_schema():
-    evaluation = Evaluation(
-        candidate_id="1", safety=1.0, feasibility=0.8, breadth=0.9, total=0.9
-    )
+    evaluation = Evaluation(candidate_id="1", safety=1.0, feasibility=0.8, breadth=0.9, total=0.9)
     entry = to_backlog_entry(_candidate(), evaluation)
     assert entry["title"] == "i wish there was a tool"
     assert entry["category"] == "misc"
@@ -46,8 +44,6 @@ def test_to_backlog_entry_matches_expected_schema():
 
 
 def test_to_backlog_entry_rejects_unapproved_candidate():
-    evaluation = Evaluation(
-        candidate_id="1", safety=0.0, feasibility=0.0, breadth=0.0, total=0.0
-    )
+    evaluation = Evaluation(candidate_id="1", safety=0.0, feasibility=0.0, breadth=0.0, total=0.0)
     with pytest.raises(ValueError, match="not approved"):
         to_backlog_entry(_candidate(), evaluation)
