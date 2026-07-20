@@ -9,14 +9,14 @@ these stages exist and [`BACKLOG.md`](BACKLOG.md) for what's done vs. planned.
 src/wishwright/
   models.py       # Candidate, Evaluation dataclasses; validates required text fields; STAGES order
   config.py       # load_config() reads and validates config.yaml -> Config(search_phrases, PolicySet)
-  discovery.py    # CandidateSource protocol; FixtureSource (JSONL, works today);
-                  #   XApiSource (stub, raises NotImplementedError until credentials exist)
+  discovery.py    # FixtureSource and authenticated, paginated XApiSource normalization
   evaluation.py   # score_candidate(candidate, policy) -> Evaluation; safety is a hard gate
   storage.py      # Ledger: validated JSON-backed {candidate_id: stage} map, locked atomic writes
   pipeline.py     # advance(ledger, id) steps one stage forward; to_backlog_entry() builds
                   #   a project-factory-shaped brief from an approved candidate
-  publish.py      # check_ready(path) verifies README/LICENSE/CI exist on disk before publish
-  reply.py        # draft_reply(candidate, repo_url) -> short reply string, <=280 chars
+  orchestrator.py # idempotent build submission, durable artifact store, stage coordination
+  publish.py      # readiness checks plus verified, resumable repo and site publication
+  reply.py        # drafting, authenticated X delivery, locked durable remote-ID store
   runlog.py       # log_event() validates and appends one JSONL line per stage transition
   cli.py          # argparse entrypoint: `evaluate` and `status`; reports local input errors cleanly
 
@@ -32,7 +32,7 @@ docs/launch/devto.md          # first-person technical launch article
 ## Data flow
 
 ```
-FixtureSource.fetch(search_phrases)  ->  Candidate
+FixtureSource/XApiSource.fetch(search_phrases)  ->  Candidate
         |
         v
 score_candidate(candidate, policy)   ->  Evaluation (safety/feasibility/breadth/total, [0,1])
@@ -44,13 +44,16 @@ Ledger.mark_seen(id, stage)          ->  durable {id: stage} record (state/ledge
 pipeline.advance(ledger, id)         ->  discovered -> evaluated -> built -> published -> replied
         |                                  one stage per call, no-op at "replied"
         v
-to_backlog_entry(candidate, eval)    ->  dict shaped for project-factory's backlog/ideas.yaml
+Orchestrator.process(candidate, eval) -> authenticated idempotent BuildSystem submission
         |
         v
-publish.check_ready(built_repo_path) ->  [] if README+LICENSE+CI all present, else reasons
+BuildArtifactStore                  -> durable artifact coordinates across restarts
         |
         v
-reply.draft_reply(candidate, url)    ->  reply text linking back to the shipped repo
+ResumablePublisher.publish(build)    -> repo and site each publicly verified
+        |
+        v
+ReplyDelivery.deliver(..., authorized=True) -> persisted X remote reply ID
 ```
 
 Every `evaluate` run also calls `runlog.log_event` per candidate, appending to
@@ -77,14 +80,8 @@ pytest --cov=wishwright --cov-report=term-missing
 No network access or paid API is required to run the full test suite. Everything exercises
 `FixtureSource` and local fixtures. Tests include property checks for scoring invariants. Fixture,
 ledger, and audit-log boundaries reject malformed data before it can reach the state machine.
-Ledger writes take an exclusive lock and refresh state first, preventing stale processes from
-overwriting each other's entries.
-`XApiSource` is a stub; wiring it up is tracked in
-`BACKLOG.md` and requires no changes to `evaluation.py`, `storage.py`, `pipeline.py`,
-`publish.py`, or `reply.py`; only a new `CandidateSource` implementation is needed.
-
-## Not yet wired up
-
-- `XApiSource`: needs real X API credentials.
-- Build/publish stages currently produce data structures (`to_backlog_entry`, `check_ready`)
-  but nothing yet calls out to an actual build pipeline or pushes a reply to X.
+Ledger, artifact, and reply stores write under exclusive locks and use atomic replacement, so a
+restart resumes confirmed work instead of repeating it. `XApiSource`, `HttpBuildSystem`, and
+`XReplyClient` use explicit bearer credentials; tests inject request functions and never use the
+network. `Orchestrator` advances only after the build response, public publication checks, and
+persisted reply receipt respectively confirm each stage.
