@@ -1,7 +1,7 @@
 """Scores a candidate on safety, feasibility, and breadth of usefulness.
 
 A candidate that matches the policy's deny-list is auto-rejected (total=0)
-regardless of how well it scores on the other axes — safety is a gate, not
+regardless of how well it scores on the other axes. Safety is a gate, not
 one input averaged in with the rest.
 """
 

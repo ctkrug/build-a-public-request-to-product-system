@@ -1,6 +1,6 @@
 """Pluggable candidate sources.
 
-XApiSource is the real production source (not wired up yet — needs API
+XApiSource is the real production source (not wired up yet because it needs API
 credentials, tracked in the backlog). FixtureSource lets the rest of the
 pipeline be built and tested against realistic data now, without network
 access or a live API key.
@@ -51,4 +51,4 @@ class XApiSource:
         self.bearer_token = bearer_token
 
     def fetch(self, search_phrases: Iterable[str]) -> Iterator[Candidate]:
-        raise NotImplementedError("XApiSource is not implemented yet — use FixtureSource")
+        raise NotImplementedError("XApiSource is not implemented yet; use FixtureSource")
