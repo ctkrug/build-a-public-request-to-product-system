@@ -1,5 +1,6 @@
 from wishwright.models import Candidate, Evaluation
 from wishwright.orchestrator import BuildResult, HttpBuildSystem, Orchestrator
+from wishwright.publish import ResumablePublisher
 from wishwright.storage import Ledger
 
 
@@ -48,3 +49,31 @@ def test_http_build_system_posts_idempotent_brief_and_normalizes_completion(tmp_
     assert result.repo_url == "https://github.com/ctkrug/grocery-tool"
     assert sent[0].get_header("Authorization") == "Bearer secret"
     assert sent[0].get_header("Idempotency-key") == "candidate-1"
+
+
+def test_orchestrator_persists_build_result_for_a_resumed_publish(tmp_path):
+    class CompleteBuild:
+        calls = 0
+
+        def submit(self, brief, idempotency_key):
+            self.calls += 1
+            return BuildResult(
+                completed=True,
+                repo_path=tmp_path / "repo",
+                repo_url="https://github.com/ctkrug/tool",
+                site_path=tmp_path / "site",
+                site_url="https://apps.charliekrug.com/tool/",
+            )
+
+    build_system = CompleteBuild()
+    publisher = ResumablePublisher(lambda path: None, lambda path: None, lambda url: False)
+    orchestrator = Orchestrator(
+        Ledger(tmp_path / "ledger.json"),
+        build_system,
+        publisher=publisher,
+        artifacts_path=tmp_path / "artifacts.json",
+    )
+
+    assert orchestrator.process(_candidate(), _evaluation()) == "built"
+    assert orchestrator.process(_candidate(), _evaluation()) == "built"
+    assert build_system.calls == 1
