@@ -1,0 +1,923 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Wishwright · Turn public wishes into safer build briefs</title>
+    <meta
+      name="description"
+      content="Wishwright ranks public product requests, blocks unsafe ideas, and turns approved posts into build briefs for indie developers."
+    >
+    <meta property="og:title" content="Wishwright · Turn public wishes into safer build briefs">
+    <meta
+      property="og:description"
+      content="Rank request-shaped posts, stop unsafe ideas, and hand approved candidates to a build pipeline."
+    >
+    <meta name="theme-color" content="#f2ead7">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,800&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    >
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='8' fill='%23f2ead7'/%3E%3Cpath d='M11 16l9 34 12-24 12 24 9-34' fill='none' stroke='%23162336' stroke-width='7' stroke-linejoin='round'/%3E%3Ccircle cx='51' cy='13' r='7' fill='%23b52f28'/%3E%3C/svg%3E"
+    >
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f2ead7;
+        --surface-1: #fff8e8;
+        --surface-2: #e3d8c2;
+        --text: #162336;
+        --muted: #59616a;
+        --accent: #b52f28;
+        --accent-ink: #fff8e8;
+        --support: #0b6965;
+        --success: #27643c;
+        --danger: #9c2924;
+        --line: rgba(22, 35, 54, 0.24);
+        --soft-line: rgba(22, 35, 54, 0.12);
+        --hard-shadow: 8px 8px 0 rgba(181, 47, 40, 0.28);
+        --soft-shadow: 0 24px 54px rgba(22, 35, 54, 0.13);
+        --display: "Fraunces", Georgia, serif;
+        --ui: "IBM Plex Mono", "Courier New", monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        min-width: 320px;
+        color: var(--text);
+        background:
+          radial-gradient(circle at 12% 17%, rgba(181, 47, 40, 0.1) 0 3px, transparent 4px),
+          radial-gradient(circle at 82% 77%, rgba(11, 105, 101, 0.1) 0 3px, transparent 4px),
+          repeating-linear-gradient(
+            0deg,
+            transparent 0 31px,
+            var(--soft-line) 32px,
+            transparent 33px
+          ),
+          var(--bg);
+        font-family: var(--ui);
+        font-size: 16px;
+        line-height: 1.65;
+        text-rendering: optimizeLegibility;
+      }
+
+      a {
+        color: var(--accent);
+        text-decoration-thickness: 2px;
+        text-underline-offset: 4px;
+        transition:
+          color 180ms ease-out,
+          background-color 180ms ease-out,
+          transform 180ms ease-out,
+          box-shadow 180ms ease-out;
+      }
+
+      a:hover {
+        color: var(--support);
+      }
+
+      a:focus-visible {
+        outline: 3px solid var(--support);
+        outline-offset: 4px;
+      }
+
+      .frame {
+        width: min(1360px, calc(100% - 48px));
+        margin: 0 auto;
+      }
+
+      .nav {
+        min-height: 88px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        border-bottom: 2px solid var(--text);
+      }
+
+      .wordmark {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        color: var(--text);
+        font-family: var(--display);
+        font-size: 1.45rem;
+        font-weight: 800;
+        letter-spacing: -0.025em;
+        text-decoration: none;
+      }
+
+      .wordmark:hover {
+        color: var(--text);
+      }
+
+      .mark {
+        width: 38px;
+        height: 38px;
+        overflow: visible;
+      }
+
+      .mark-dot {
+        transform-origin: center;
+        animation: register 3.4s ease-in-out infinite alternate;
+      }
+
+      .nav-link {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 0;
+        font-size: 0.82rem;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .hero {
+        min-height: calc(100svh - 88px);
+        display: grid;
+        grid-template-columns: minmax(0, 0.88fr) minmax(560px, 1.12fr);
+        align-items: center;
+        gap: clamp(48px, 6vw, 96px);
+        padding: 64px 0 72px;
+      }
+
+      .eyebrow,
+      .section-label,
+      .sheet-kicker {
+        margin: 0 0 16px;
+        color: var(--support);
+        font-size: 0.76rem;
+        font-weight: 600;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+      }
+
+      .eyebrow::before,
+      .section-label::before {
+        content: "";
+        width: 32px;
+        height: 3px;
+        display: inline-block;
+        margin: 0 12px 3px 0;
+        background: var(--accent);
+      }
+
+      h1,
+      h2,
+      h3 {
+        margin: 0;
+        font-family: var(--display);
+        line-height: 1.02;
+        text-wrap: balance;
+      }
+
+      h1 {
+        max-width: 11ch;
+        font-size: clamp(3.3rem, 6.1vw, 6.8rem);
+        letter-spacing: -0.055em;
+      }
+
+      h1 em {
+        position: relative;
+        color: var(--accent);
+        font-style: normal;
+      }
+
+      h1 em::after {
+        content: "";
+        position: absolute;
+        right: 0;
+        bottom: 0.06em;
+        left: 0;
+        height: 0.08em;
+        background: var(--support);
+        transform: rotate(-1.4deg);
+      }
+
+      .lede {
+        max-width: 57ch;
+        margin: 28px 0 0;
+        color: var(--muted);
+        font-size: clamp(1rem, 1.45vw, 1.18rem);
+      }
+
+      .hero-actions {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        margin-top: 32px;
+      }
+
+      .cta {
+        min-height: 48px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 11px 20px;
+        border: 2px solid var(--text);
+        color: var(--accent-ink);
+        background: var(--accent);
+        box-shadow: 5px 5px 0 var(--text);
+        font-weight: 600;
+        text-decoration: none;
+      }
+
+      .cta:hover {
+        color: var(--accent-ink);
+        background: var(--support);
+        transform: translate(-2px, -2px);
+        box-shadow: 7px 7px 0 var(--text);
+      }
+
+      .cta:active {
+        transform: translate(4px, 4px);
+        box-shadow: 1px 1px 0 var(--text);
+      }
+
+      .install {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        color: var(--muted);
+        font-size: 0.78rem;
+      }
+
+      .output-sheet {
+        position: relative;
+        padding: clamp(24px, 3vw, 44px);
+        border: 2px solid var(--text);
+        background:
+          linear-gradient(90deg, transparent 0 63px, rgba(181, 47, 40, 0.16) 64px 66px, transparent 67px),
+          repeating-linear-gradient(
+            0deg,
+            transparent 0 31px,
+            rgba(22, 35, 54, 0.08) 32px,
+            transparent 33px
+          ),
+          var(--surface-1);
+        box-shadow: var(--hard-shadow), var(--soft-shadow);
+        transform: rotate(0.35deg);
+        animation: sheet-in 520ms ease-out both;
+      }
+
+      .registration {
+        position: absolute;
+        top: 18px;
+        right: 18px;
+        width: 26px;
+        height: 26px;
+        border: 2px solid var(--support);
+        border-radius: 50%;
+      }
+
+      .registration::before,
+      .registration::after {
+        content: "";
+        position: absolute;
+        background: var(--accent);
+      }
+
+      .registration::before {
+        top: 11px;
+        left: -7px;
+        width: 36px;
+        height: 2px;
+      }
+
+      .registration::after {
+        top: -7px;
+        left: 11px;
+        width: 2px;
+        height: 36px;
+      }
+
+      .sheet-title {
+        max-width: 15ch;
+        font-size: clamp(1.75rem, 2.7vw, 2.7rem);
+        letter-spacing: -0.035em;
+      }
+
+      .sheet-meta {
+        display: flex;
+        gap: 20px;
+        margin: 20px 0 28px;
+        padding: 10px 0;
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 0.73rem;
+        text-transform: uppercase;
+      }
+
+      .sheet-meta strong {
+        color: var(--text);
+      }
+
+      .terminal {
+        overflow-x: auto;
+        border: 2px solid var(--text);
+        background: var(--text);
+        color: #fff8e8;
+        scrollbar-color: var(--accent) var(--text);
+      }
+
+      .terminal-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-width: 550px;
+        padding: 9px 14px;
+        border-bottom: 1px solid rgba(255, 248, 232, 0.28);
+        color: #c7d0da;
+        font-size: 0.7rem;
+      }
+
+      .terminal pre {
+        min-width: 550px;
+        margin: 0;
+        padding: 18px 14px 20px;
+        font: 0.74rem/1.85 var(--ui);
+      }
+
+      .score-high {
+        color: #79d6cb;
+      }
+
+      .score-stop {
+        color: #ff8a7e;
+      }
+
+      .pipeline-rail {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0;
+        margin-top: 26px;
+        border: 1px solid var(--line);
+      }
+
+      .rail-step {
+        position: relative;
+        min-height: 80px;
+        padding: 12px;
+        border-right: 1px solid var(--line);
+        font-size: 0.68rem;
+        text-transform: uppercase;
+      }
+
+      .rail-step:last-child {
+        border-right: 0;
+      }
+
+      .rail-step strong {
+        display: block;
+        margin-bottom: 4px;
+        color: var(--accent);
+        font-size: 1rem;
+      }
+
+      main > section:not(.hero) {
+        padding: 96px 0;
+        border-top: 2px solid var(--text);
+      }
+
+      h2 {
+        max-width: 16ch;
+        font-size: clamp(2.35rem, 4.5vw, 4.8rem);
+        letter-spacing: -0.045em;
+      }
+
+      h3 {
+        font-size: 1.35rem;
+        letter-spacing: -0.02em;
+      }
+
+      .section-intro {
+        display: grid;
+        grid-template-columns: minmax(0, 0.8fr) minmax(320px, 1.2fr);
+        gap: 64px;
+        align-items: end;
+        margin-bottom: 56px;
+      }
+
+      .section-intro p {
+        max-width: 64ch;
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .benefit-list {
+        border-top: 2px solid var(--text);
+      }
+
+      .benefit {
+        display: grid;
+        grid-template-columns: 72px minmax(180px, 0.6fr) minmax(0, 1.4fr);
+        gap: 32px;
+        padding: 30px 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .benefit-number {
+        color: var(--accent);
+        font-family: var(--display);
+        font-size: 2rem;
+        font-weight: 800;
+        line-height: 1;
+      }
+
+      .benefit p {
+        max-width: 65ch;
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .usage-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 0.82fr) minmax(440px, 1.18fr);
+        gap: 64px;
+        align-items: start;
+      }
+
+      .usage-copy p {
+        max-width: 58ch;
+        color: var(--muted);
+      }
+
+      .code-sheet {
+        position: sticky;
+        top: 24px;
+        border: 2px solid var(--text);
+        background: var(--surface-1);
+        box-shadow: 7px 7px 0 rgba(11, 105, 101, 0.28);
+      }
+
+      .code-label {
+        padding: 10px 16px;
+        border-bottom: 2px solid var(--text);
+        color: var(--accent);
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .code-sheet pre {
+        overflow-x: auto;
+        margin: 0;
+        padding: 24px;
+        color: var(--text);
+        font: 0.78rem/1.8 var(--ui);
+      }
+
+      .boundary-note {
+        margin-top: 32px;
+        padding: 20px;
+        border-left: 5px solid var(--accent);
+        background: var(--surface-2);
+      }
+
+      .boundary-note strong {
+        display: block;
+        margin-bottom: 6px;
+      }
+
+      .faq-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 24px;
+      }
+
+      .faq-item {
+        padding: 28px;
+        border: 1px solid var(--line);
+        background: color-mix(in srgb, var(--surface-1) 88%, transparent);
+        box-shadow: 4px 4px 0 var(--soft-line);
+      }
+
+      .faq-item p {
+        margin: 14px 0 0;
+        color: var(--muted);
+      }
+
+      footer {
+        padding: 36px 0;
+        border-top: 2px solid var(--text);
+      }
+
+      .footer-inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        color: var(--muted);
+        font-size: 0.78rem;
+      }
+
+      @keyframes sheet-in {
+        from {
+          opacity: 0;
+          transform: translateY(18px) rotate(0.35deg);
+        }
+      }
+
+      @keyframes register {
+        to {
+          transform: translate(1.5px, -1.5px);
+        }
+      }
+
+      @media (max-width: 1040px) {
+        .hero {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 56px;
+        }
+
+        h1 {
+          max-width: 12ch;
+        }
+
+        .output-sheet {
+          width: min(760px, 100%);
+        }
+      }
+
+      @media (max-width: 900px) {
+        .usage-grid {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 32px;
+        }
+
+        .code-sheet {
+          position: static;
+          min-width: 0;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .frame {
+          width: min(100% - 32px, 680px);
+        }
+
+        .hero {
+          min-height: auto;
+          padding: 52px 0 64px;
+        }
+
+        h1 {
+          font-size: clamp(3rem, 15vw, 4.8rem);
+        }
+
+        .hero-actions,
+        .footer-inner {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .cta {
+          width: 100%;
+        }
+
+        .output-sheet {
+          padding: 24px 18px;
+          box-shadow: 5px 5px 0 rgba(181, 47, 40, 0.28), var(--soft-shadow);
+          transform: none;
+        }
+
+        .sheet-meta {
+          flex-wrap: wrap;
+          gap: 8px 18px;
+        }
+
+        .pipeline-rail {
+          grid-template-columns: 1fr 1fr;
+        }
+
+        .rail-step:nth-child(2) {
+          border-right: 0;
+        }
+
+        .rail-step:nth-child(-n + 2) {
+          border-bottom: 1px solid var(--line);
+        }
+
+        main > section:not(.hero) {
+          padding: 72px 0;
+        }
+
+        .section-intro {
+          grid-template-columns: 1fr;
+          gap: 32px;
+        }
+
+        .benefit {
+          grid-template-columns: 48px 1fr;
+          gap: 16px;
+        }
+
+        .benefit p {
+          grid-column: 2;
+        }
+
+        .faq-list {
+          grid-template-columns: 1fr;
+        }
+
+      }
+
+      @media (max-width: 430px) {
+        .nav {
+          min-height: 80px;
+        }
+
+        .wordmark {
+          font-size: 1.18rem;
+        }
+
+        .mark {
+          width: 32px;
+          height: 32px;
+        }
+
+        .nav-link {
+          font-size: 0.68rem;
+        }
+
+        .terminal-head,
+        .terminal pre {
+          min-width: 510px;
+        }
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #111b28;
+          --surface-1: #1c2a3a;
+          --surface-2: #283648;
+          --text: #f2ead7;
+          --muted: #bdc3c6;
+          --accent: #ff786c;
+          --accent-ink: #111b28;
+          --support: #66c9bf;
+          --success: #80c995;
+          --danger: #ff8a7e;
+          --line: rgba(242, 234, 215, 0.28);
+          --soft-line: rgba(242, 234, 215, 0.12);
+          --hard-shadow: 8px 8px 0 rgba(255, 120, 108, 0.3);
+          --soft-shadow: 0 24px 54px rgba(0, 0, 0, 0.28);
+        }
+
+        .terminal {
+          border-color: #f2ead7;
+          background: #0b121c;
+        }
+
+        .terminal pre {
+          color: #fff8e8;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="frame">
+      <nav class="nav" aria-label="Primary navigation">
+        <a class="wordmark" href="#top" aria-label="Wishwright home">
+          <svg class="mark" viewBox="0 0 48 48" aria-hidden="true">
+            <path
+              d="M5 10l7 28 10-20 10 20 11-28"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="5"
+              stroke-linejoin="round"
+            />
+            <circle class="mark-dot" cx="39" cy="8" r="5" fill="var(--accent)" />
+          </svg>
+          <span>Wishwright</span>
+        </a>
+        <a
+          class="nav-link"
+          href="https://github.com/ctkrug/build-a-public-request-to-product-system"
+        >
+          Source on GitHub <span aria-hidden="true">↗</span>
+        </a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero frame" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow">Public request triage</p>
+          <h1 id="hero-title">Start with a <em>request</em>, not a guess.</h1>
+          <p class="lede">
+            Wishwright helps indie developers rank request-shaped posts, stop unsafe ideas, and
+            turn approved candidates into auditable build briefs.
+          </p>
+          <div class="hero-actions">
+            <a
+              class="cta"
+              href="https://github.com/ctkrug/build-a-public-request-to-product-system"
+            >View on GitHub</a>
+            <code class="install">pip install -e .</code>
+          </div>
+        </div>
+
+        <div class="output-sheet" aria-label="Sample Wishwright evaluation output">
+          <span class="registration" aria-hidden="true"></span>
+          <p class="sheet-kicker">Run 001 / local fixture</p>
+          <h2 class="sheet-title">Four wishes enter. Three briefs leave.</h2>
+          <div class="sheet-meta">
+            <span><strong>4</strong> candidates</span>
+            <span><strong>1</strong> safety stop</span>
+            <span><strong>0</strong> network calls</span>
+          </div>
+          <div class="terminal" tabindex="0" aria-label="Scrollable terminal output">
+            <div class="terminal-head">
+              <span>wishwright evaluate</span>
+              <span>fixtures/sample_posts.jsonl</span>
+            </div>
+            <pre>id  score  text
+─────────────────────────────────────────────────────────
+1   <span class="score-high">1.00</span>  Split group trip expenses without spreadsheet fights
+4   <span class="score-high">1.00</span>  Compare grocery prices across nearby stores
+2   0.67  Personal medication schedule reminder
+3   <span class="score-stop">0.00</span>  Unsafe account-access request [DENIED]</pre>
+          </div>
+          <div class="pipeline-rail" aria-label="Evaluation flow">
+            <div class="rail-step"><strong>01</strong>Read JSONL</div>
+            <div class="rail-step"><strong>02</strong>Apply gate</div>
+            <div class="rail-step"><strong>03</strong>Rank signal</div>
+            <div class="rail-step"><strong>04</strong>Write brief</div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="frame">
+          <div class="section-intro">
+            <div>
+              <p class="section-label">What changes</p>
+              <h2>Less scrolling. Better evidence.</h2>
+            </div>
+            <p>
+              A public request is useful demand evidence, but only after it has been checked for
+              safety, feasibility, and relevance beyond one person's exact situation. Wishwright
+              makes those checks explicit and keeps the source attached to every approved brief.
+            </p>
+          </div>
+
+          <div class="benefit-list">
+            <article class="benefit">
+              <span class="benefit-number">01</span>
+              <h3>Rank the batch</h3>
+              <p>
+                The fixture source reads one post per JSONL line. The evaluator assigns safety,
+                feasibility, breadth, and total scores from 0 to 1, then the CLI prints candidates
+                from strongest to weakest.
+              </p>
+            </article>
+            <article class="benefit">
+              <span class="benefit-number">02</span>
+              <h3>Stop unsafe requests</h3>
+              <p>
+                A case-insensitive deny-list is a hard gate. A matched term forces the total to
+                zero, so a dangerous request cannot pass because it happens to sound feasible or
+                widely useful.
+              </p>
+            </article>
+            <article class="benefit">
+              <span class="benefit-number">03</span>
+              <h3>Keep the trail</h3>
+              <p>
+                Evaluation events go to a timestamped JSONL run log. A locked ledger stores each
+                candidate's pipeline stage and refreshes before writes, preventing stale processes
+                from erasing newer records.
+              </p>
+            </article>
+            <article class="benefit">
+              <span class="benefit-number">04</span>
+              <h3>Hand off a brief</h3>
+              <p>
+                Approved candidates convert to a dictionary with the request text, source URL,
+                public author, rationale, and component scores. That stable boundary lets a build
+                system decide what happens next.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="frame usage-grid">
+          <div class="usage-copy">
+            <p class="section-label">Run it locally</p>
+            <h2>Inspect the whole decision.</h2>
+            <p>
+              Install the package on Python 3.11 or newer, score the included fixture, and inspect
+              the JSONL audit log. Configuration is plain YAML, and the test path needs no API key
+              or hosted database.
+            </p>
+            <div class="boundary-note">
+              <strong>Current integration boundary</strong>
+              X discovery, downstream build invocation, repository publishing, and reply posting
+              are not wired into the CLI yet. The repository provides tested interfaces and local
+              handoff objects for those stages.
+            </div>
+          </div>
+          <div class="code-sheet" aria-label="Install and run commands">
+            <div class="code-label">Terminal / three commands</div>
+            <pre><code>git clone https://github.com/ctkrug/build-a-public-request-to-product-system.git
+
+cd build-a-public-request-to-product-system
+pip install -e ".[dev]"
+
+wishwright evaluate \
+  --input fixtures/sample_posts.jsonl</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="frame">
+          <div class="section-intro">
+            <div>
+              <p class="section-label">Questions</p>
+              <h2>Know the boundary before you build.</h2>
+            </div>
+            <p>
+              Wishwright is a tested local pipeline core, not a hosted bot. These answers spell
+              out what runs today and what an adopter still needs to connect.
+            </p>
+          </div>
+
+          <div class="faq-list">
+            <article class="faq-item">
+              <h3>What does Wishwright do today?</h3>
+              <p>
+                It reads local request fixtures, applies a configurable safety and usefulness
+                rubric, prints a ranked shortlist, writes audit events, tracks pipeline stages,
+                checks built repositories, drafts replies, and produces build-brief dictionaries.
+              </p>
+            </article>
+            <article class="faq-item">
+              <h3>How does safety screening work?</h3>
+              <p>
+                Policy terms are matched case-insensitively against request text. A match returns
+                zero for every score and records the reason, while non-matches continue through
+                feasibility and breadth scoring.
+              </p>
+            </article>
+            <article class="faq-item">
+              <h3>Does Wishwright connect to X?</h3>
+              <p>
+                Not in the current release. `XApiSource` marks the intended adapter boundary and
+                raises until credentials and request handling are implemented. The included source
+                uses deterministic JSONL fixtures.
+              </p>
+            </article>
+            <article class="faq-item">
+              <h3>What reaches the build system?</h3>
+              <p>
+                Only approved candidates can become briefs. Each brief includes the title, source
+                candidate ID, source URL, public-request rationale, and all four evaluation scores.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="frame footer-inner">
+        <span>Wishwright · Built by Charlie Krug</span>
+        <a href="https://apps.charliekrug.com">More by Charlie Krug → apps.charliekrug.com</a>
+      </div>
+    </footer>
+  </body>
+</html>
