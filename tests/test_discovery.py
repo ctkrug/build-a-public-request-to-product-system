@@ -43,6 +43,6 @@ def test_fixture_source_raises_on_missing_required_field(tmp_path):
         list(FixtureSource(fixture).fetch(search_phrases=[]))
 
 
-def test_x_api_source_not_implemented():
-    with pytest.raises(NotImplementedError):
-        list(XApiSource().fetch(search_phrases=[]))
+def test_x_api_source_requires_a_bearer_token():
+    with pytest.raises(ValueError, match="bearer token"):
+        list(XApiSource().fetch(search_phrases=["wish"]))
