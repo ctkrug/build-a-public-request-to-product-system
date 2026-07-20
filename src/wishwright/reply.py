@@ -85,18 +85,35 @@ class ReplyStore:
     def save(self, candidate_id: str, remote_id: str) -> None:
         if not isinstance(remote_id, str) or not remote_id.strip():
             raise ValueError("remote reply ID is required")
+        with self._lock():
+            replies = self._load()
+            replies.setdefault(candidate_id, remote_id)
+            self._write(replies)
+
+    def deliver_once(self, candidate_id: str, create_reply: Callable[[], str]) -> str:
+        """Atomically reuse or create a reply for one source candidate."""
+        with self._lock():
+            replies = self._load()
+            if existing := replies.get(candidate_id):
+                return existing
+            remote_id = create_reply()
+            if not isinstance(remote_id, str) or not remote_id.strip():
+                raise ValueError("remote reply ID is required")
+            replies[candidate_id] = remote_id
+            self._write(replies)
+            return remote_id
+
+    def _lock(self):
         self.path.parent.mkdir(parents=True, exist_ok=True)
         lock_path = self.path.with_name(f"{self.path.name}.lock")
-        with lock_path.open("a") as lock_file:
-            fcntl.flock(lock_file, fcntl.LOCK_EX)
-            try:
-                replies = self._load()
-                replies.setdefault(candidate_id, remote_id)
-                temporary = self.path.with_suffix(self.path.suffix + ".tmp")
-                temporary.write_text(json.dumps(replies, indent=2, sort_keys=True))
-                temporary.replace(self.path)
-            finally:
-                fcntl.flock(lock_file, fcntl.LOCK_UN)
+        lock_file = lock_path.open("a")
+        fcntl.flock(lock_file, fcntl.LOCK_EX)
+        return _ReplyLock(lock_file)
+
+    def _write(self, replies: dict[str, str]) -> None:
+        temporary = self.path.with_suffix(self.path.suffix + ".tmp")
+        temporary.write_text(json.dumps(replies, indent=2, sort_keys=True))
+        temporary.replace(self.path)
 
     def _load(self) -> dict[str, str]:
         if not self.path.exists():
@@ -116,6 +133,20 @@ class ReplyStore:
         return replies
 
 
+class _ReplyLock:
+    def __init__(self, file):
+        self.file = file
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        try:
+            fcntl.flock(self.file, fcntl.LOCK_UN)
+        finally:
+            self.file.close()
+
+
 class ReplyDelivery:
     """Send only explicitly authorized replies and reuse persisted remote IDs."""
 
@@ -129,6 +160,7 @@ class ReplyDelivery:
         existing = self.store.get(candidate.id)
         if existing:
             return existing
-        remote_id = self.client.create_reply(candidate, draft_reply(candidate, repo_url))
-        self.store.save(candidate.id, remote_id)
-        return remote_id
+        return self.store.deliver_once(
+            candidate.id,
+            lambda: self.client.create_reply(candidate, draft_reply(candidate, repo_url)),
+        )
