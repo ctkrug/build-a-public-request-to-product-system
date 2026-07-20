@@ -1,4 +1,5 @@
-from wishwright.publish import check_ready
+from wishwright.orchestrator import BuildResult
+from wishwright.publish import ResumablePublisher, check_ready
 
 
 def _make_ready_repo(path):
@@ -46,3 +47,24 @@ def test_check_ready_rejects_directories_in_place_of_required_files(tmp_path):
     (tmp_path / "README.md").mkdir()
 
     assert "missing README.md" in check_ready(tmp_path)
+
+
+def test_resumable_publisher_retries_only_unverified_targets(tmp_path):
+    calls = []
+    visible = {"https://github.com/ctkrug/tool": True, "https://apps.charliekrug.com/tool/": False}
+
+    publisher = ResumablePublisher(
+        push_repository=lambda path: calls.append(("repo", path)),
+        deploy_site=lambda path: calls.append(("site", path)),
+        verify_url=lambda url: visible[url],
+    )
+    build = BuildResult(
+        completed=True,
+        repo_path=tmp_path / "repo",
+        repo_url="https://github.com/ctkrug/tool",
+        site_path=tmp_path / "site",
+        site_url="https://apps.charliekrug.com/tool/",
+    )
+
+    assert publisher.publish(build) is False
+    assert calls == [("site", tmp_path / "site")]
