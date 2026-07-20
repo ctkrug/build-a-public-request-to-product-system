@@ -1,5 +1,5 @@
 from wishwright.orchestrator import BuildResult
-from wishwright.publish import ResumablePublisher, check_ready
+from wishwright.publish import CommandSiteDeployer, ResumablePublisher, check_ready
 
 
 def _make_ready_repo(path):
@@ -68,3 +68,15 @@ def test_resumable_publisher_retries_only_unverified_targets(tmp_path):
 
     assert publisher.publish(build) is False
     assert calls == [("site", tmp_path / "site")]
+
+
+def test_command_site_deployer_interpolates_only_the_site_path(tmp_path):
+    calls = []
+    deploy = CommandSiteDeployer(
+        ("deploy-static", "--directory", "{site_path}"),
+        run=lambda command: calls.append(command),
+    )
+
+    deploy(tmp_path / "site")
+
+    assert calls == [("deploy-static", "--directory", str(tmp_path / "site"))]
