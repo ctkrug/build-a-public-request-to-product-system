@@ -1,5 +1,5 @@
 from wishwright.models import Candidate, Evaluation
-from wishwright.orchestrator import BuildResult, Orchestrator
+from wishwright.orchestrator import BuildResult, HttpBuildSystem, Orchestrator
 from wishwright.storage import Ledger
 
 
@@ -25,3 +25,26 @@ def test_orchestrator_keeps_evaluated_candidate_until_build_completes(tmp_path):
     orchestrator = Orchestrator(Ledger(tmp_path / "ledger.json"), PendingBuild())
 
     assert orchestrator.process(_candidate(), _evaluation()) == "evaluated"
+
+
+def test_http_build_system_posts_idempotent_brief_and_normalizes_completion(tmp_path):
+    sent = []
+
+    def request(request):
+        sent.append(request)
+        return {
+            "completed": True,
+            "repo_path": str(tmp_path / "repo"),
+            "repo_url": "https://github.com/ctkrug/grocery-tool",
+            "site_path": str(tmp_path / "site"),
+            "site_url": "https://apps.charliekrug.com/grocery-tool/",
+        }
+
+    result = HttpBuildSystem("https://factory.example/builds", "secret", request=request).submit(
+        {"title": "Grocery tool"}, "candidate-1"
+    )
+
+    assert result.completed is True
+    assert result.repo_url == "https://github.com/ctkrug/grocery-tool"
+    assert sent[0].get_header("Authorization") == "Bearer secret"
+    assert sent[0].get_header("Idempotency-key") == "candidate-1"
