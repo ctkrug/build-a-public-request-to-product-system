@@ -1,7 +1,8 @@
 import pytest
+import json
 
 from wishwright.models import Candidate
-from wishwright.reply import ReplyDelivery, draft_reply
+from wishwright.reply import ReplyDelivery, XReplyClient, draft_reply
 
 
 def _candidate() -> Candidate:
@@ -49,3 +50,20 @@ def test_reply_delivery_requires_authorization_and_persists_remote_id(tmp_path):
         == "remote-55"
     )
     assert client.calls == 1
+
+
+def test_x_reply_client_posts_to_source_candidate():
+    sent = []
+
+    def request(request):
+        sent.append(request)
+        return {"data": {"id": "remote-99"}}
+
+    remote_id = XReplyClient("token", request=request).create_reply(_candidate(), "Built it")
+
+    assert remote_id == "remote-99"
+    assert sent[0].get_header("Authorization") == "Bearer token"
+    assert json.loads(sent[0].data) == {
+        "text": "Built it",
+        "reply": {"in_reply_to_tweet_id": "1"},
+    }
