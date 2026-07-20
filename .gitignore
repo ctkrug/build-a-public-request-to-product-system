@@ -8,9 +8,12 @@ dist/
 .venv/
 venv/
 .pytest_cache/
+.hypothesis/
 .mypy_cache/
 .ruff_cache/
 .coverage
+.coverage.*
+coverage*.json
 htmlcov/
 
 # Wishwright runtime state (never commit real ledger/logs/secrets)
