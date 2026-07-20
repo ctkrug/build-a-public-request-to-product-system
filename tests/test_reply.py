@@ -36,7 +36,16 @@ def test_reply_delivery_requires_authorization_and_persists_remote_id(tmp_path):
     client = Client()
     delivery = ReplyDelivery(client, tmp_path / "replies.json")
 
-    assert delivery.deliver(_candidate(), "https://github.com/ctkrug/example", authorized=False) is None
-    assert delivery.deliver(_candidate(), "https://github.com/ctkrug/example", authorized=True) == "remote-55"
-    assert delivery.deliver(_candidate(), "https://github.com/ctkrug/example", authorized=True) == "remote-55"
+    assert (
+        delivery.deliver(_candidate(), "https://github.com/ctkrug/example", authorized=False)
+        is None
+    )
+    assert (
+        delivery.deliver(_candidate(), "https://github.com/ctkrug/example", authorized=True)
+        == "remote-55"
+    )
+    assert (
+        delivery.deliver(_candidate(), "https://github.com/ctkrug/example", authorized=True)
+        == "remote-55"
+    )
     assert client.calls == 1
