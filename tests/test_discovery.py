@@ -90,3 +90,22 @@ def test_x_api_source_normalizes_paginated_search_results():
     ]
     assert requests[0].get_header("Authorization") == "Bearer token"
     assert parse_qs(urlparse(requests[1].full_url).query)["next_token"] == ["page-two"]
+
+
+def test_x_api_source_rejects_tweets_without_resolved_usernames():
+    def request(_request):
+        return {
+            "data": [
+                {
+                    "id": "10",
+                    "author_id": "missing",
+                    "text": "I wish there were a tool",
+                    "created_at": "2026-07-20T00:00:00Z",
+                }
+            ],
+            "includes": {"users": []},
+            "meta": {},
+        }
+
+    with pytest.raises(ValueError, match="author username"):
+        list(XApiSource("token", request=request).fetch(["wish tool"]))
