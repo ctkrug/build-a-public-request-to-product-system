@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "wishwright"
 version = "0.1.0"
-description = "Finds public request-to-product opportunities on X, evaluates them, and drives them to a shipped product."
+description = "Ranks public product requests and turns approved candidates into auditable build briefs."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
