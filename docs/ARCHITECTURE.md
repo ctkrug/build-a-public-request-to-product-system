@@ -54,7 +54,7 @@ reply.draft_reply(candidate, url)    ->  reply text linking back to the shipped 
 ```
 
 Every `evaluate` run also calls `runlog.log_event` per candidate, appending to
-`logs/run.jsonl` — an audit trail independent of the ledger's current-state view.
+`logs/run.jsonl`, an audit trail independent of the ledger's current-state view.
 
 ## Config
 
@@ -74,17 +74,17 @@ pytest -q
 pytest --cov=wishwright --cov-report=term-missing
 ```
 
-No network access or paid API is required to run the full test suite — everything exercises
+No network access or paid API is required to run the full test suite. Everything exercises
 `FixtureSource` and local fixtures. Tests include property checks for scoring invariants. Fixture,
 ledger, and audit-log boundaries reject malformed data before it can reach the state machine.
 Ledger writes take an exclusive lock and refresh state first, preventing stale processes from
 overwriting each other's entries.
 `XApiSource` is a stub; wiring it up is tracked in
 `BACKLOG.md` and requires no changes to `evaluation.py`, `storage.py`, `pipeline.py`,
-`publish.py`, or `reply.py` — only a new `CandidateSource` implementation.
+`publish.py`, or `reply.py`; only a new `CandidateSource` implementation is needed.
 
 ## Not yet wired up
 
-- `XApiSource` — needs real X API credentials.
+- `XApiSource`: needs real X API credentials.
 - Build/publish stages currently produce data structures (`to_backlog_entry`, `check_ready`)
   but nothing yet calls out to an actual build pipeline or pushes a reply to X.
