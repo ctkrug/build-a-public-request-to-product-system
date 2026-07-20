@@ -1,8 +1,8 @@
 # Backlog
 
-Epic/story breakdown for the build. Every story has concrete, verifiable acceptance criteria.
-The first story of Epic 1 is the wow moment — it must be reachable without live X API
-credentials, since none exist yet.
+Epic/story breakdown for the local pipeline core. Every story has concrete, verifiable acceptance
+criteria. The first story of Epic 1 is the fixture-driven proof and does not require X API
+credentials.
 
 ## Epic 1 — Discovery & Evaluation Pipeline
 
@@ -94,3 +94,26 @@ credentials, since none exist yet.
     stories 9-11) each with a one-line description.
   - AC: `evaluate` output columns stay aligned (no ragged whitespace) for a fixture set with
     candidate texts of noticeably different lengths.
+
+## Epic 4: Production request-to-product integrations
+
+- [ ] **13. Live X discovery**: replace the raising `XApiSource` stub with authenticated,
+  paginated search and rate-limit handling.
+  - AC: a CLI command fetches and normalizes live posts for the configured request phrases.
+  - AC: mocked API tests cover pagination, malformed responses, authorization failure, and rate
+    limits without making network calls in the suite.
+
+- [ ] **14. Idempotent build invocation**: submit approved briefs to the downstream build system
+  and record the external job identifier.
+  - AC: retries cannot create a second build for the same candidate.
+  - AC: the ledger advances to `built` only after the downstream system confirms completion.
+
+- [ ] **15. Verified publishing**: publish the built repository and site, then run readiness checks
+  against the resulting public locations.
+  - AC: partial failures can resume without recreating the repository or deployment.
+  - AC: the ledger advances to `published` only after both destinations are reachable.
+
+- [ ] **16. Authorized reply delivery**: post the drafted reply through X with an explicit approval
+  control and an idempotency record.
+  - AC: a retry after an uncertain response cannot post a duplicate reply.
+  - AC: the ledger advances to `replied` only after the remote post identifier is persisted.
