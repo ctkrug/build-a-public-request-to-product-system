@@ -1,4 +1,5 @@
 import pytest
+from urllib.parse import parse_qs, urlparse
 
 from wishwright.discovery import FixtureSource, XApiSource
 
@@ -46,3 +47,46 @@ def test_fixture_source_raises_on_missing_required_field(tmp_path):
 def test_x_api_source_requires_a_bearer_token():
     with pytest.raises(ValueError, match="bearer token"):
         list(XApiSource().fetch(search_phrases=["wish"]))
+
+
+def test_x_api_source_normalizes_paginated_search_results():
+    requests = []
+    pages = [
+        {
+            "data": [
+                {
+                    "id": "10",
+                    "author_id": "42",
+                    "text": "I wish there were a tool",
+                    "created_at": "2026-07-20T00:00:00Z",
+                }
+            ],
+            "includes": {"users": [{"id": "42", "username": "alice"}]},
+            "meta": {"next_token": "page-two"},
+        },
+        {
+            "data": [
+                {
+                    "id": "11",
+                    "author_id": "43",
+                    "text": "Someone should build this",
+                    "created_at": "2026-07-20T01:00:00Z",
+                }
+            ],
+            "includes": {"users": [{"id": "43", "username": "bob"}]},
+            "meta": {},
+        },
+    ]
+
+    def request(request):
+        requests.append(request)
+        return pages.pop(0)
+
+    candidates = list(XApiSource("token", request=request).fetch(["wish tool"]))
+
+    assert [(candidate.id, candidate.author, candidate.url) for candidate in candidates] == [
+        ("10", "alice", "https://x.com/alice/status/10"),
+        ("11", "bob", "https://x.com/bob/status/11"),
+    ]
+    assert requests[0].get_header("Authorization") == "Bearer token"
+    assert parse_qs(urlparse(requests[1].full_url).query)["next_token"] == ["page-two"]
