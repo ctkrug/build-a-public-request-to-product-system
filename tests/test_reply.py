@@ -2,7 +2,7 @@ import pytest
 import json
 
 from wishwright.models import Candidate
-from wishwright.reply import ReplyDelivery, XReplyClient, draft_reply
+from wishwright.reply import PendingReplyError, ReplyDelivery, XReplyClient, draft_reply
 
 
 def _candidate() -> Candidate:
@@ -50,6 +50,65 @@ def test_reply_delivery_requires_authorization_and_persists_remote_id(tmp_path):
         == "remote-55"
     )
     assert client.calls == 1
+
+
+def test_reply_delivery_blocks_retry_after_an_ambiguous_failure(tmp_path):
+    class AmbiguousClient:
+        calls = 0
+
+        def create_reply(self, candidate, text):
+            self.calls += 1
+            raise OSError("connection closed before the response")
+
+    client = AmbiguousClient()
+    delivery = ReplyDelivery(client, tmp_path / "replies.json")
+
+    with pytest.raises(OSError, match="connection closed"):
+        delivery.deliver(_candidate(), "https://github.com/ctkrug/example", authorized=True)
+    with pytest.raises(PendingReplyError, match="needs reconciliation"):
+        delivery.deliver(_candidate(), "https://github.com/ctkrug/example", authorized=True)
+
+    assert client.calls == 1
+
+
+def test_pending_reply_can_be_resolved_with_a_remote_id(tmp_path):
+    class AmbiguousClient:
+        def create_reply(self, candidate, text):
+            raise OSError("connection closed before the response")
+
+    delivery = ReplyDelivery(AmbiguousClient(), tmp_path / "replies.json")
+    with pytest.raises(OSError):
+        delivery.deliver(_candidate(), "https://github.com/ctkrug/example", authorized=True)
+
+    delivery.store.resolve_pending(_candidate().id, "remote-99")
+
+    assert (
+        delivery.deliver(_candidate(), "https://github.com/ctkrug/example", authorized=True)
+        == "remote-99"
+    )
+
+
+def test_pending_reply_can_be_cleared_after_confirming_no_post_exists(tmp_path):
+    class RecoveringClient:
+        calls = 0
+
+        def create_reply(self, candidate, text):
+            self.calls += 1
+            if self.calls == 1:
+                raise OSError("connection closed before the response")
+            return "remote-100"
+
+    client = RecoveringClient()
+    delivery = ReplyDelivery(client, tmp_path / "replies.json")
+    with pytest.raises(OSError):
+        delivery.deliver(_candidate(), "https://github.com/ctkrug/example", authorized=True)
+
+    delivery.store.resolve_pending(_candidate().id, None)
+
+    assert (
+        delivery.deliver(_candidate(), "https://github.com/ctkrug/example", authorized=True)
+        == "remote-100"
+    )
 
 
 def test_x_reply_client_posts_to_source_candidate():

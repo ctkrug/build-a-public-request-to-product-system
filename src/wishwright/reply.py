@@ -13,6 +13,11 @@ from urllib.request import Request, urlopen
 from .models import Candidate
 
 MAX_REPLY_LENGTH = 280
+_PENDING_REPLY = "__wishwright_pending_reply__"
+
+
+class PendingReplyError(RuntimeError):
+    """A prior delivery attempt needs reconciliation before it can be retried."""
 
 
 def draft_reply(candidate: Candidate, repo_url: str) -> str:
@@ -81,20 +86,49 @@ class ReplyStore:
         self.path = Path(path)
 
     def get(self, candidate_id: str) -> str | None:
-        return self._load().get(candidate_id)
+        remote_id = self._load().get(candidate_id)
+        if remote_id == _PENDING_REPLY:
+            raise PendingReplyError(f"reply for candidate {candidate_id!r} needs reconciliation")
+        return remote_id
 
     def deliver_once(self, candidate_id: str, create_reply: Callable[[], str]) -> str:
         """Atomically reuse or create a reply for one source candidate."""
         with self._lock():
             replies = self._load()
             if existing := replies.get(candidate_id):
+                if existing == _PENDING_REPLY:
+                    raise PendingReplyError(
+                        f"reply for candidate {candidate_id!r} needs reconciliation"
+                    )
                 return existing
+            replies[candidate_id] = _PENDING_REPLY
+            self._write(replies)
             remote_id = create_reply()
-            if not isinstance(remote_id, str) or not remote_id.strip():
+            if (
+                not isinstance(remote_id, str)
+                or not remote_id.strip()
+                or remote_id == _PENDING_REPLY
+            ):
                 raise ValueError("remote reply ID is required")
             replies[candidate_id] = remote_id
             self._write(replies)
             return remote_id
+
+    def resolve_pending(self, candidate_id: str, remote_id: str | None) -> None:
+        """Record an ambiguous attempt's remote ID, or clear it after confirming no post exists."""
+        if remote_id is not None and (
+            not isinstance(remote_id, str) or not remote_id.strip() or remote_id == _PENDING_REPLY
+        ):
+            raise ValueError("remote reply ID must be a non-empty string or None")
+        with self._lock():
+            replies = self._load()
+            if replies.get(candidate_id) != _PENDING_REPLY:
+                raise ValueError(f"candidate {candidate_id!r} has no pending reply")
+            if remote_id is None:
+                replies.pop(candidate_id)
+            else:
+                replies[candidate_id] = remote_id
+            self._write(replies)
 
     def _lock(self):
         self.path.parent.mkdir(parents=True, exist_ok=True)
