@@ -58,10 +58,15 @@ class ResumablePublisher:
         ):
             raise ValueError("a completed build with publication details is required")
         if not self._verify_url(repo_url):
+            readiness_errors = check_ready(repo_path)
+            if readiness_errors:
+                raise ValueError(f"repository is not ready: {'; '.join(readiness_errors)}")
             self._push_repository(repo_path)
             if not self._verify_url(repo_url):
                 return False
         if not self._verify_url(site_url):
+            if not site_path.is_dir():
+                raise ValueError(f"site build directory does not exist: {site_path}")
             self._deploy_site(site_path)
             if not self._verify_url(site_url):
                 return False

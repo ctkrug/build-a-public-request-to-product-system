@@ -52,6 +52,13 @@ def test_http_build_system_posts_idempotent_brief_and_normalizes_completion(tmp_
 
 
 def test_orchestrator_persists_build_result_for_a_resumed_publish(tmp_path):
+    repo_path = tmp_path / "repo"
+    (repo_path / ".github" / "workflows").mkdir(parents=True)
+    (repo_path / "README.md").write_text("# Tool")
+    (repo_path / "LICENSE").write_text("MIT")
+    (repo_path / ".github" / "workflows" / "ci.yml").write_text("name: CI")
+    (tmp_path / "site").mkdir()
+
     class CompleteBuild:
         calls = 0
 
@@ -59,7 +66,7 @@ def test_orchestrator_persists_build_result_for_a_resumed_publish(tmp_path):
             self.calls += 1
             return BuildResult(
                 completed=True,
-                repo_path=tmp_path / "repo",
+                repo_path=repo_path,
                 repo_url="https://github.com/ctkrug/tool",
                 site_path=tmp_path / "site",
                 site_url="https://apps.charliekrug.com/tool/",

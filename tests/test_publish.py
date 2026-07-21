@@ -61,6 +61,8 @@ def test_check_ready_rejects_directories_in_place_of_required_files(tmp_path):
 def test_resumable_publisher_retries_only_unverified_targets(tmp_path):
     calls = []
     visible = {"https://github.com/ctkrug/tool": True, "https://apps.charliekrug.com/tool/": False}
+    site_path = tmp_path / "site"
+    site_path.mkdir()
 
     publisher = ResumablePublisher(
         push_repository=lambda path: calls.append(("repo", path)),
@@ -71,12 +73,51 @@ def test_resumable_publisher_retries_only_unverified_targets(tmp_path):
         completed=True,
         repo_path=tmp_path / "repo",
         repo_url="https://github.com/ctkrug/tool",
-        site_path=tmp_path / "site",
+        site_path=site_path,
         site_url="https://apps.charliekrug.com/tool/",
     )
 
     assert publisher.publish(build) is False
     assert calls == [("site", tmp_path / "site")]
+
+
+def test_resumable_publisher_blocks_repository_that_fails_readiness(tmp_path):
+    calls = []
+    publisher = ResumablePublisher(
+        push_repository=lambda path: calls.append(path),
+        deploy_site=lambda path: None,
+        verify_url=lambda url: False,
+    )
+    build = BuildResult(
+        completed=True,
+        repo_path=tmp_path / "repo",
+        repo_url="https://github.com/ctkrug/tool",
+        site_path=tmp_path / "site",
+        site_url="https://apps.charliekrug.com/tool/",
+    )
+
+    with pytest.raises(ValueError, match="repository is not ready"):
+        publisher.publish(build)
+
+    assert calls == []
+
+
+def test_resumable_publisher_requires_a_site_build_before_deploying(tmp_path):
+    publisher = ResumablePublisher(
+        push_repository=lambda path: None,
+        deploy_site=lambda path: None,
+        verify_url=lambda url: url.startswith("https://github.com/"),
+    )
+    build = BuildResult(
+        completed=True,
+        repo_path=tmp_path / "repo",
+        repo_url="https://github.com/ctkrug/tool",
+        site_path=tmp_path / "missing-site",
+        site_url="https://apps.charliekrug.com/tool/",
+    )
+
+    with pytest.raises(ValueError, match="site build directory does not exist"):
+        publisher.publish(build)
 
 
 @pytest.mark.parametrize(
