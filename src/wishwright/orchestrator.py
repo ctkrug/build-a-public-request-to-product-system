@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 import fcntl
 import json
 from pathlib import Path
-from typing import Any, Callable, Mapping, Protocol
+from typing import Any, Protocol
 from urllib.request import Request, urlopen
 
 from .models import Candidate, Evaluation
@@ -26,7 +27,7 @@ class BuildResult:
     site_url: str | None = None
 
     @classmethod
-    def pending(cls) -> "BuildResult":
+    def pending(cls) -> BuildResult:
         return cls(completed=False)
 
 

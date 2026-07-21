@@ -4,7 +4,7 @@ misbehaving run can be debugged after the fact."""
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from .models import STAGES
@@ -26,7 +26,7 @@ def log_event(path: str | Path, *, stage: str, candidate_id: str, result: str) -
     log_path = Path(path)
     log_path.parent.mkdir(parents=True, exist_ok=True)
     entry = {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "stage": stage,
         "candidate_id": candidate_id,
         "result": result,

@@ -3,10 +3,11 @@ is shipped."""
 
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping
 import fcntl
 import json
 from pathlib import Path
-from typing import Any, Callable, Mapping, Protocol
+from typing import Any, Protocol
 from urllib.request import Request, urlopen
 
 from .models import Candidate

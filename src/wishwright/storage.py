@@ -66,7 +66,7 @@ class Ledger:
         return self._entries.get(candidate_id)
 
     def counts_by_stage(self) -> dict[str, int]:
-        counts = {stage: 0 for stage in STAGES}
+        counts = dict.fromkeys(STAGES, 0)
         for stage in self._entries.values():
             counts[stage] = counts.get(stage, 0) + 1
         return counts

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from .models import STAGES, Candidate, Evaluation
 
-_NEXT_STAGE = dict(zip(STAGES, STAGES[1:]))
+_NEXT_STAGE = dict(zip(STAGES, STAGES[1:], strict=False))
 
 
 def advance(ledger, candidate_id: str) -> str | None:

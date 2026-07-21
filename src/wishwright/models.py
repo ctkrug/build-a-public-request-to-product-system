@@ -20,7 +20,7 @@ class Candidate:
     created_at: str
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Candidate":
+    def from_dict(cls, data: dict) -> Candidate:
         if not isinstance(data, dict):
             raise ValueError("candidate must be a JSON object")
         missing = [field for field in REQUIRED_CANDIDATE_FIELDS if field not in data]
