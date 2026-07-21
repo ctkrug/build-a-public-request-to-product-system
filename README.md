@@ -169,7 +169,16 @@ repository push; skips destinations already public; and only moves the ledger to
 both URLs verify. Run `process` again with `authorized_reply=True` only after reviewing the reply and
 confirming that X allows the authenticated account to answer that post. A stored remote ID makes
 confirmed retries safe. If X accepts a reply but its response is lost, reconcile the account before
-retrying because the create-post endpoint has no documented idempotency key.
+retrying because the create-post endpoint has no documented idempotency key. Wishwright records a
+pending marker before delivery and blocks another attempt until it is resolved:
+
+```python
+# Record the post found during reconciliation.
+replies.store.resolve_pending(candidate.id, "remote-post-id")
+
+# Or allow a retry after confirming that X did not create a post.
+replies.store.resolve_pending(candidate.id, None)
+```
 
 ## Configure the policy
 
