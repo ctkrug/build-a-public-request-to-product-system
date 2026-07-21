@@ -59,6 +59,9 @@ class Ledger:
             raise ValueError(f"unknown stage {stage!r}, expected one of {STAGES}")
         with self._write_lock():
             self._load()
+            current = self._entries.get(candidate_id)
+            if current is not None and STAGES.index(stage) < STAGES.index(current):
+                return
             self._entries[candidate_id] = stage
             self._save()
 

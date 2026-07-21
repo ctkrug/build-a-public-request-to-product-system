@@ -33,6 +33,19 @@ def test_stale_ledger_instances_do_not_overwrite_each_others_entries(tmp_path):
     assert reloaded.stage_of("two") == "evaluated"
 
 
+def test_stale_ledger_instance_cannot_regress_a_candidate_stage(tmp_path):
+    path = tmp_path / "ledger.json"
+    stale_worker = Ledger(path)
+    current_worker = Ledger(path)
+
+    stale_worker.mark_seen("one", stage="evaluated")
+    current_worker.mark_seen("one", stage="published")
+    stale_worker.mark_seen("one", stage="built")
+
+    assert stale_worker.stage_of("one") == "published"
+    assert Ledger(path).stage_of("one") == "published"
+
+
 def test_counts_by_stage(tmp_path):
     ledger = Ledger(tmp_path / "ledger.json")
     ledger.mark_seen("1", stage="discovered")

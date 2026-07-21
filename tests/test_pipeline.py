@@ -25,6 +25,16 @@ def test_advance_on_unknown_candidate_returns_none(tmp_path):
     assert advance(ledger, "missing") is None
 
 
+def test_advance_returns_newer_stage_written_by_another_worker(tmp_path):
+    path = tmp_path / "ledger.json"
+    stale_worker = Ledger(path)
+    current_worker = Ledger(path)
+    stale_worker.mark_seen("1", "evaluated")
+    current_worker.mark_seen("1", "published")
+
+    assert advance(stale_worker, "1") == "published"
+
+
 def _candidate() -> Candidate:
     return Candidate(
         id="1",

@@ -17,7 +17,7 @@ def advance(ledger, candidate_id: str) -> str | None:
         return current
     next_stage = _NEXT_STAGE[current]
     ledger.mark_seen(candidate_id, next_stage)
-    return next_stage
+    return ledger.stage_of(candidate_id)
 
 
 def to_backlog_entry(candidate: Candidate, evaluation: Evaluation) -> dict:
