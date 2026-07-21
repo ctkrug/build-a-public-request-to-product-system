@@ -112,7 +112,11 @@ credentials.
   - AC: partial failures can resume without recreating the repository or deployment.
   - AC: the ledger advances to `published` only after both destinations are reachable.
 
-- [x] **16. Authorized reply delivery**: post the drafted reply through X with an explicit approval
+- [ ] **16. Authorized reply delivery**: post the drafted reply through X with an explicit approval
   control and a durable remote-ID record.
   - AC: a retry after an uncertain response cannot post a duplicate reply.
   - AC: the ledger advances to `replied` only after the remote post identifier is persisted.
+  - Blocked: X only permits API replies when the authenticated account was mentioned or quoted,
+    while discovery currently accepts arbitrary request posts. The create-post endpoint also has no
+    documented idempotency key, so an accepted request with a lost response cannot be retried safely
+    without reconciliation.
