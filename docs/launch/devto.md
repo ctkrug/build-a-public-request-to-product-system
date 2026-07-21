@@ -32,7 +32,7 @@ ranking.
 
 External actions are where a tidy local state machine usually breaks. A build request might time
 out after the remote service accepts it. A repository push can succeed while the site deployment
-fails. A reply can be created just before the process exits.
+fails. A reply receipt can be written just before another worker wakes up.
 
 I used a candidate-derived idempotency key for build submissions and store confirmed artifact
 coordinates in a locked JSON file. Publication checks the repository URL and site URL separately,
@@ -44,16 +44,24 @@ confirmed.
 Reply delivery follows the same rule. It requires an explicit authorization flag and writes the
 remote X post ID while holding an exclusive `fcntl` lock. A retry reads that receipt instead of
 posting again. The local stores use atomic replacement, but the lock matters just as much: atomic
-replacement alone does not stop two stale processes from erasing each other's updates.
+replacement alone does not stop two stale processes from erasing each other's updates. Stage writes
+are monotonic, so an old worker cannot move a published candidate back to built.
+
+There is an important limit. X permits API replies only when the authenticated account was mentioned
+or quoted by the original author. The create-post endpoint also has no documented idempotency key.
+The adapter can therefore deliver an approved reply to an eligible post and safely reuse a confirmed
+receipt, but arbitrary discovered posts need a human-posted response. An ambiguous timeout must be
+reconciled before retrying. I would not hide those platform constraints behind an "exactly once"
+claim.
 
 ## Real adapters, local tests
 
 The default CLI reads JSONL fixtures so a checkout works without credentials or network calls. The
 production library boundaries are concrete: `XApiSource` performs authenticated, paginated recent
 search; `HttpBuildSystem` sends the brief and idempotency key; `ResumablePublisher` verifies both
-destinations; and `XReplyClient` posts the approved reply. Tests inject request functions and cover
-pagination, malformed payloads, authentication failures, rate limits, partial publication, and
-resumed delivery without contacting those services.
+destinations; and `XReplyClient` posts an approved, eligible reply. Tests inject request functions
+and cover pagination, malformed payloads, authentication failures, rate limits, partial
+publication, and resumed confirmed delivery without contacting those services.
 
 That split keeps the demo repeatable without pretending the network does not exist. The full suite
 also runs branch-aware coverage with an 85 percent floor on Python 3.11 and 3.12.
@@ -68,4 +76,4 @@ source in shadow mode and compare its decisions with human review for several ba
 
 Wishwright is deliberately conservative. Its useful result is not the largest list of ideas. It is
 a smaller queue where each item has a public source, visible scores, and a recorded path from
-request to reply.
+request to response draft.
