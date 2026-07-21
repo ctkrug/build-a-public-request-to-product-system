@@ -53,7 +53,7 @@ BuildArtifactStore                  -> durable artifact coordinates across resta
 ResumablePublisher.publish(build)    -> repo and site each publicly verified
         |
         v
-ReplyDelivery.deliver(..., authorized=True) -> persisted X remote reply ID
+ReplyDelivery.deliver(..., authorized=True) -> persisted X remote reply ID for an eligible post
 ```
 
 Every `evaluate` run also calls `runlog.log_event` per candidate, appending to
@@ -81,7 +81,15 @@ No network access or paid API is required to run the full test suite. Everything
 `FixtureSource` and local fixtures. Tests include property checks for scoring invariants. Fixture,
 ledger, and audit-log boundaries reject malformed data before it can reach the state machine.
 Ledger, artifact, and reply stores write under exclusive locks and use atomic replacement, so a
-restart resumes confirmed work instead of repeating it. `XApiSource`, `HttpBuildSystem`, and
-`XReplyClient` use explicit bearer credentials; tests inject request functions and never use the
-network. `Orchestrator` advances only after the build response, public publication checks, and
-persisted reply receipt respectively confirm each stage.
+restart resumes confirmed work instead of repeating it. Stage writes are monotonic, preventing a
+stale worker from moving a candidate backward. `XApiSource`, `HttpBuildSystem`, and `XReplyClient`
+use explicit bearer credentials; tests inject request functions and never use the network.
+`Orchestrator` advances only after the build response, public publication checks, and persisted
+reply receipt respectively confirm each stage.
+
+X limits API replies to posts where the authenticated account was mentioned or quoted by the
+original author. `XReplyClient` is therefore a delivery adapter for eligible posts, not a guarantee
+that every discovered request can be answered through the API. A post without that relationship
+needs the drafted response to be sent by a human. Confirmed reply IDs are safe to resume; an
+ambiguous create-post timeout must be reconciled before retrying because X does not document an
+idempotency key for that endpoint.
