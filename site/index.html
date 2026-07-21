@@ -858,8 +858,8 @@
             <div class="boundary-note">
               <strong>CLI for fixtures, library for production</strong>
               The repeatable CLI reads local JSONL. Authenticated X search, idempotent build
-              submission, verified publishing, and explicitly approved X replies are available as
-              tested Python collaborators for a deployment to compose.
+              submission, verified publishing, and explicitly approved X replies for eligible
+              posts are available as tested Python collaborators for a deployment to compose.
             </div>
           </div>
           <div class="code-sheet" aria-label="Install and run commands">
@@ -894,7 +894,8 @@ wishwright evaluate \
               <p>
                 It reads local request fixtures, applies a configurable safety and usefulness
                 rubric, prints a ranked shortlist, writes audit events, tracks pipeline stages,
-                invokes an idempotent builder, verifies publication, and records approved replies.
+                invokes an idempotent builder, verifies publication, and records confirmed reply
+                IDs.
               </p>
             </article>
             <article class="faq-item">
@@ -910,7 +911,9 @@ wishwright evaluate \
               <p>
                 Yes, through an authenticated recent-search source and an explicitly authorized
                 reply client. Tests inject request functions, so pagination and rejected responses
-                are covered without using live credentials. The default CLI remains fixture-based.
+                are covered without using live credentials. X only permits API replies when the
+                authenticated account was mentioned or quoted. Other posts need the drafted
+                response to be sent by a human. The default CLI remains fixture-based.
               </p>
             </article>
             <article class="faq-item">
