@@ -43,8 +43,8 @@ exactly one stage at a time in a durable ledger:
   "useful"-sounding unsafe request slip through; a gate can't be outvoted.
 - **Sources are pluggable via a `Protocol`.** `FixtureSource` (local JSONL) lets every other
   stage be built, tested, and demoed without an X API key. `XApiSource` is the real source,
-  stubbed until credentials exist. Swapping it in requires no changes anywhere else in the
-  pipeline.
+  with authenticated pagination and response normalization behind the same interface. Swapping
+  sources requires no scoring or storage changes.
 - **The ledger is the source of truth for "have we processed this."** No candidate is
   re-evaluated, re-built, or re-replied-to twice; `advance()` moves a candidate forward exactly
   one stage and is safe to call blindly (no-ops at the terminal stage instead of raising).
@@ -54,13 +54,15 @@ exactly one stage at a time in a durable ledger:
 - **Not servable.** This is a backend pipeline tool, not a web product. Its output (built
   products) may be servable, but wishwright itself is a CLI.
 
-## What "v1 done" looks like
+## What v1 includes
 
-- `wishwright evaluate` runs end-to-end against real X search results (not just fixtures),
-  producing a ranked, safety-filtered shortlist.
-- Approved candidates flow through `to_backlog_entry` into a real build pipeline and come back
-  out as a published, `check_ready`-passing repo.
-- A reply is actually posted to X linking back to the shipped product, and the ledger reflects
-  `replied` for that candidate.
+- `XApiSource` performs authenticated, paginated recent search and normalizes expanded authors
+  into `Candidate` records. The local `evaluate` command stays fixture-based for repeatable runs.
+- `HttpBuildSystem` submits approved briefs with an idempotency key, while `BuildArtifactStore`
+  retains confirmed repository and site coordinates across restarts.
+- `ResumablePublisher` verifies repository and site URLs independently and retries only the
+  destination that is not yet public.
+- `ReplyDelivery` requires explicit authorization, persists the remote X post ID under a lock,
+  and advances the ledger only after the receipt exists.
 - `wishwright status` gives an at-a-glance view of how many candidates are sitting in each stage,
   so a stuck pipeline is visible immediately rather than silently piling up in one stage.
