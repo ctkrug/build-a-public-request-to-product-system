@@ -122,24 +122,49 @@ Construct the production collaborators with credentials supplied by your deploym
 the library never reads secrets from files or posts a reply without `authorized_reply=True`.
 
 ```python
+import os
+
+from wishwright.config import load_config
 from wishwright.discovery import XApiSource
+from wishwright.evaluation import score_candidate
 from wishwright.orchestrator import HttpBuildSystem, Orchestrator
+from wishwright.publish import (
+    CommandSiteDeployer,
+    ResumablePublisher,
+    git_push_repository,
+    verify_public_url,
+)
 from wishwright.reply import ReplyDelivery, XReplyClient
 from wishwright.storage import Ledger
 
-source = XApiSource(bearer_token=x_bearer_token)
-builder = HttpBuildSystem(build_endpoint, build_bearer_token)
-replies = ReplyDelivery(XReplyClient(x_bearer_token), "state/replies.json")
-orchestrator = Orchestrator(Ledger("state/ledger.json"), builder, reply_delivery=replies)
+config = load_config("config.yaml")
+x_token = os.environ["X_BEARER_TOKEN"]
+source = XApiSource(x_token)
+builder = HttpBuildSystem(os.environ["BUILD_ENDPOINT"], os.environ["BUILD_BEARER_TOKEN"])
+publisher = ResumablePublisher(
+    git_push_repository,
+    CommandSiteDeployer(("deploy-static", "{site_path}")),
+    verify_public_url,
+)
+replies = ReplyDelivery(XReplyClient(x_token), "state/replies.json")
+orchestrator = Orchestrator(
+    Ledger("state/ledger.json"),
+    builder,
+    publisher=publisher,
+    reply_delivery=replies,
+)
 
-# Evaluate each candidate, then explicitly approve the outward-facing reply.
-stage = orchestrator.process(candidate, evaluation, authorized_reply=True)
+candidate = next(source.fetch(config.search_phrases))
+evaluation = score_candidate(candidate, config.policy)
+
+# Keep this false until a human approves the public reply.
+stage = orchestrator.process(candidate, evaluation, authorized_reply=False)
 ```
 
-For publishing, construct `ResumablePublisher(git_push_repository,
-CommandSiteDeployer(("your-deployer", "{site_path}")), verify_public_url)`. The site deployment
-is an argument vector rather than a shell string. It skips destinations already public and only
-allows the ledger to move to `published` after both URLs verify.
+Replace `deploy-static` with your configured static-site command. The deployer accepts an argument
+vector rather than a shell string. Publication checks README, license, and CI readiness before a
+repository push; skips destinations already public; and only moves the ledger to `published` after
+both URLs verify. Run `process` again with `authorized_reply=True` only after reviewing the reply.
 
 ## Configure the policy
 
@@ -160,11 +185,11 @@ policy:
 
 ## Project map
 
-- [`docs/VISION.md`](docs/VISION.md) defines the full request-to-product goal and the unfinished
-  integrations required to reach it.
+- [`docs/VISION.md`](docs/VISION.md) defines the request-to-product goal and the completed v1
+  boundaries.
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) follows data through discovery, scoring, storage,
   handoff, readiness checks, and reply drafting.
-- [`docs/BACKLOG.md`](docs/BACKLOG.md) records the accepted local MVP stories.
+- [`docs/BACKLOG.md`](docs/BACKLOG.md) records the completed acceptance criteria.
 - [`docs/DESIGN.md`](docs/DESIGN.md) specifies the landing page's risograph dispatch system.
 - [`docs/POSITIONING.md`](docs/POSITIONING.md) locks the audience, name, promise, and copy voice.
 
