@@ -849,10 +849,10 @@
               or hosted database.
             </p>
             <div class="boundary-note">
-              <strong>Current integration boundary</strong>
-              X discovery, downstream build invocation, repository publishing, and reply posting
-              are not wired into the CLI yet. The repository provides tested interfaces and local
-              handoff objects for those stages.
+              <strong>CLI for fixtures, library for production</strong>
+              The repeatable CLI reads local JSONL. Authenticated X search, idempotent build
+              submission, verified publishing, and explicitly approved X replies are available as
+              tested Python collaborators for a deployment to compose.
             </div>
           </div>
           <div class="code-sheet" aria-label="Install and run commands">
@@ -876,8 +876,8 @@ wishwright evaluate \
               <h2>Know the boundary before you build.</h2>
             </div>
             <p>
-              Wishwright is a tested local pipeline core, not a hosted bot. These answers spell
-              out what runs today and what an adopter still needs to connect.
+              Wishwright is a Python CLI and library, not a hosted bot. These answers separate the
+              repeatable local workflow from the credentialed production adapters.
             </p>
           </div>
 
@@ -887,7 +887,7 @@ wishwright evaluate \
               <p>
                 It reads local request fixtures, applies a configurable safety and usefulness
                 rubric, prints a ranked shortlist, writes audit events, tracks pipeline stages,
-                checks built repositories, drafts replies, and produces build-brief dictionaries.
+                invokes an idempotent builder, verifies publication, and records approved replies.
               </p>
             </article>
             <article class="faq-item">
@@ -901,9 +901,9 @@ wishwright evaluate \
             <article class="faq-item">
               <h3>Does Wishwright connect to X?</h3>
               <p>
-                Not in the current release. `XApiSource` marks the intended adapter boundary and
-                raises until credentials and request handling are implemented. The included source
-                uses deterministic JSONL fixtures.
+                Yes, through an authenticated recent-search source and an explicitly authorized
+                reply client. Tests inject request functions, so pagination and rejected responses
+                are covered without using live credentials. The default CLI remains fixture-based.
               </p>
             </article>
             <article class="faq-item">

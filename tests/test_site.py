@@ -90,4 +90,4 @@ def test_site_copy_passes_the_closeout_gate():
     assert "—" not in copy
     assert not {term for term in FORBIDDEN_COPY if term in lowered}
     assert "Wishwright" in copy
-    assert "Current integration boundary" in copy
+    assert "CLI for fixtures, library for production" in copy
