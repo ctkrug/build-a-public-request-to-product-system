@@ -1,4 +1,5 @@
 import pytest
+from urllib.error import HTTPError
 from urllib.parse import parse_qs, urlparse
 
 from wishwright.discovery import FixtureSource, XApiSource
@@ -109,3 +110,27 @@ def test_x_api_source_rejects_tweets_without_resolved_usernames():
 
     with pytest.raises(ValueError, match="author username"):
         list(XApiSource("token", request=request).fetch(["wish tool"]))
+
+
+def test_x_api_source_rejects_a_non_object_response():
+    with pytest.raises(ValueError, match="non-object response"):
+        list(XApiSource("token", request=lambda request: []).fetch(["wish tool"]))
+
+
+@pytest.mark.parametrize("status", [401, 429])
+def test_x_api_source_propagates_auth_and_rate_limit_failures(monkeypatch, status):
+    def reject(_request, timeout):
+        raise HTTPError(
+            url=XApiSource.endpoint,
+            code=status,
+            msg="request rejected",
+            hdrs=None,
+            fp=None,
+        )
+
+    monkeypatch.setattr("wishwright.discovery.urlopen", reject)
+
+    with pytest.raises(HTTPError) as error:
+        list(XApiSource("token").fetch(["wish tool"]))
+
+    assert error.value.code == status
