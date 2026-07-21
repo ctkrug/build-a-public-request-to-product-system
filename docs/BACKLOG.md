@@ -114,9 +114,8 @@ credentials.
 
 - [ ] **16. Authorized reply delivery**: post the drafted reply through X with an explicit approval
   control and a durable remote-ID record.
-  - AC: a retry after an uncertain response cannot post a duplicate reply.
+  - AC: a retry after an uncertain response cannot post a duplicate reply. Complete: a durable
+    pending marker blocks retry until an operator records the remote ID or confirms no post exists.
   - AC: the ledger advances to `replied` only after the remote post identifier is persisted.
   - Blocked: X only permits API replies when the authenticated account was mentioned or quoted,
-    while discovery currently accepts arbitrary request posts. The create-post endpoint also has no
-    documented idempotency key, so an accepted request with a lost response cannot be retried safely
-    without reconciliation.
+    while discovery currently accepts arbitrary request posts.
