@@ -15,7 +15,7 @@ credentials.
     crashing or printing an empty table.
 
 - [x] **2. Pluggable discovery sources**: a `CandidateSource` interface with a fixture-backed
-  implementation for development/testing and a stubbed real-source implementation for X.
+  implementation for development/testing and an authenticated recent-search implementation for X.
   - AC: `config.yaml` defines a list of search phrases that `discovery.FixtureSource.fetch`
     receives and can be asserted against in a test.
   - AC: `FixtureSource` returns `Candidate` objects with all of `id`, `author`, `text`, `url`,
@@ -98,7 +98,7 @@ credentials.
 ## Epic 4: Production request-to-product integrations
 
 - [x] **13. Live X discovery**: authenticated, paginated search and normalized public posts.
-  - AC: a CLI command fetches and normalizes live posts for the configured request phrases.
+  - AC: the `XApiSource` adapter fetches and normalizes live posts for configured request phrases.
   - AC: mocked API tests cover pagination, malformed responses, authorization failure, and rate
     limits without making network calls in the suite.
 
@@ -107,8 +107,8 @@ credentials.
   - AC: retries cannot create a second build for the same candidate.
   - AC: the ledger advances to `built` only after the downstream system confirms completion.
 
-- [x] **15. Verified publishing**: publish the built repository and site, then run readiness checks
-  against the resulting public locations.
+- [x] **15. Verified publishing**: enforce local repository readiness, publish the built repository
+  and site, then verify both public locations.
   - AC: partial failures can resume without recreating the repository or deployment.
   - AC: the ledger advances to `published` only after both destinations are reachable.
 
