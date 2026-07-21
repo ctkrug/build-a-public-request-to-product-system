@@ -82,14 +82,6 @@ class ReplyStore:
     def get(self, candidate_id: str) -> str | None:
         return self._load().get(candidate_id)
 
-    def save(self, candidate_id: str, remote_id: str) -> None:
-        if not isinstance(remote_id, str) or not remote_id.strip():
-            raise ValueError("remote reply ID is required")
-        with self._lock():
-            replies = self._load()
-            replies.setdefault(candidate_id, remote_id)
-            self._write(replies)
-
     def deliver_once(self, candidate_id: str, create_reply: Callable[[], str]) -> str:
         """Atomically reuse or create a reply for one source candidate."""
         with self._lock():
