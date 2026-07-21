@@ -13,7 +13,7 @@ trail, and converts approved candidates into structured briefs for a downstream 
 
 The local CLI works from JSONL fixtures. Production integrations are explicit library boundaries:
 an authenticated X search source, idempotent build-service client, resumable publisher, and an
-explicitly authorized X reply delivery service.
+explicitly authorized X reply delivery service for posts eligible under X's reply rules.
 
 ## See the result
 
@@ -120,6 +120,8 @@ brief = to_backlog_entry(candidate, evaluation)
 
 Construct the production collaborators with credentials supplied by your deployment environment;
 the library never reads secrets from files or posts a reply without `authorized_reply=True`.
+X currently permits API replies only when the authenticated account was mentioned or quoted by the
+original author. Use `draft_reply` for a human-posted response when a discovered post is not eligible.
 
 ```python
 import os
@@ -164,7 +166,10 @@ stage = orchestrator.process(candidate, evaluation, authorized_reply=False)
 Replace `deploy-static` with your configured static-site command. The deployer accepts an argument
 vector rather than a shell string. Publication checks README, license, and CI readiness before a
 repository push; skips destinations already public; and only moves the ledger to `published` after
-both URLs verify. Run `process` again with `authorized_reply=True` only after reviewing the reply.
+both URLs verify. Run `process` again with `authorized_reply=True` only after reviewing the reply and
+confirming that X allows the authenticated account to answer that post. A stored remote ID makes
+confirmed retries safe. If X accepts a reply but its response is lost, reconcile the account before
+retrying because the create-post endpoint has no documented idempotency key.
 
 ## Configure the policy
 
