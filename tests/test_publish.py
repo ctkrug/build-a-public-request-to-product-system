@@ -79,6 +79,20 @@ def test_resumable_publisher_retries_only_unverified_targets(tmp_path):
     assert calls == [("site", tmp_path / "site")]
 
 
+@pytest.mark.parametrize(
+    "build",
+    [
+        BuildResult.pending(),
+        BuildResult(completed=True),
+    ],
+)
+def test_resumable_publisher_rejects_incomplete_build_details(build):
+    publisher = ResumablePublisher(lambda path: None, lambda path: None, lambda url: True)
+
+    with pytest.raises(ValueError, match="publication details"):
+        publisher.publish(build)
+
+
 def test_command_site_deployer_interpolates_only_the_site_path(tmp_path):
     calls = []
     deploy = CommandSiteDeployer(

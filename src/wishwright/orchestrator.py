@@ -59,8 +59,16 @@ class BuildArtifactStore:
         )
 
     def save(self, candidate_id: str, build: BuildResult) -> None:
-        if not build.completed or not all(
-            (build.repo_path, build.repo_url, build.site_path, build.site_url)
+        repo_path = build.repo_path
+        repo_url = build.repo_url
+        site_path = build.site_path
+        site_url = build.site_url
+        if (
+            not build.completed
+            or repo_path is None
+            or not repo_url
+            or site_path is None
+            or not site_url
         ):
             raise ValueError("cannot store an incomplete build artifact")
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -70,10 +78,10 @@ class BuildArtifactStore:
             try:
                 entries = self._load()
                 entries[candidate_id] = {
-                    "repo_path": str(build.repo_path),
-                    "repo_url": build.repo_url,
-                    "site_path": str(build.site_path),
-                    "site_url": build.site_url,
+                    "repo_path": str(repo_path),
+                    "repo_url": repo_url,
+                    "site_path": str(site_path),
+                    "site_url": site_url,
                 }
                 temporary = self.path.with_suffix(self.path.suffix + ".tmp")
                 temporary.write_text(json.dumps(entries, indent=2, sort_keys=True))

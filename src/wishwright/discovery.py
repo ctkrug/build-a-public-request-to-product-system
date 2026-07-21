@@ -1,10 +1,4 @@
-"""Pluggable candidate sources.
-
-XApiSource is the real production source (not wired up yet because it needs API
-credentials, tracked in the backlog). FixtureSource lets the rest of the
-pipeline be built and tested against realistic data now, without network
-access or a live API key.
-"""
+"""Pluggable fixture and authenticated X candidate sources."""
 
 from __future__ import annotations
 
@@ -59,7 +53,8 @@ class XApiSource:
         self._request = request or self._live_request
 
     def fetch(self, search_phrases: Iterable[str]) -> Iterator[Candidate]:
-        if not isinstance(self.bearer_token, str) or not self.bearer_token.strip():
+        bearer_token = self.bearer_token
+        if not isinstance(bearer_token, str) or not bearer_token.strip():
             raise ValueError("X API bearer token is required")
         seen_ids = set()
         for phrase in search_phrases:
@@ -67,7 +62,7 @@ class XApiSource:
                 continue
             next_token = None
             while True:
-                page = self._search_page(phrase.strip(), next_token)
+                page = self._search_page(phrase.strip(), next_token, bearer_token.strip())
                 for candidate in self._candidates(page):
                     if candidate.id not in seen_ids:
                         seen_ids.add(candidate.id)
@@ -76,7 +71,9 @@ class XApiSource:
                 if not isinstance(next_token, str) or not next_token:
                     break
 
-    def _search_page(self, phrase: str, next_token: str | None) -> Mapping[str, Any]:
+    def _search_page(
+        self, phrase: str, next_token: str | None, bearer_token: str
+    ) -> Mapping[str, Any]:
         query = f"({phrase}) -is:retweet"
         params = {
             "query": query,
@@ -89,7 +86,7 @@ class XApiSource:
             params["next_token"] = next_token
         request = Request(
             f"{self.endpoint}?{urlencode(params)}",
-            headers={"Authorization": f"Bearer {self.bearer_token.strip()}"},
+            headers={"Authorization": f"Bearer {bearer_token}"},
         )
         page = self._request(request)
         if not isinstance(page, Mapping):

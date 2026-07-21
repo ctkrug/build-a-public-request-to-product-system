@@ -49,17 +49,25 @@ class ResumablePublisher:
         self._verify_url = verify_url
 
     def publish(self, build: BuildResult) -> bool:
-        if not build.completed or not all(
-            (build.repo_path, build.repo_url, build.site_path, build.site_url)
+        repo_path = build.repo_path
+        repo_url = build.repo_url
+        site_path = build.site_path
+        site_url = build.site_url
+        if (
+            not build.completed
+            or repo_path is None
+            or not repo_url
+            or site_path is None
+            or not site_url
         ):
             raise ValueError("a completed build with publication details is required")
-        if not self._verify_url(build.repo_url):
-            self._push_repository(build.repo_path)
-            if not self._verify_url(build.repo_url):
+        if not self._verify_url(repo_url):
+            self._push_repository(repo_path)
+            if not self._verify_url(repo_url):
                 return False
-        if not self._verify_url(build.site_url):
-            self._deploy_site(build.site_path)
-            if not self._verify_url(build.site_url):
+        if not self._verify_url(site_url):
+            self._deploy_site(site_path)
+            if not self._verify_url(site_url):
                 return False
         return True
 
