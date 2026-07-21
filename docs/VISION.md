@@ -12,8 +12,9 @@ nobody is watching the signal and turning it into product on a reliable cadence.
 
 Two audiences, one system:
 
-- **The requester:** someone who voiced a real, public need and gets a working product and a
-  reply linking to it, usually without ever knowing the pipeline exists.
+- **The requester:** someone who voiced a real, public need and gets a working product plus a
+  drafted response linking to it. Eligible posts can receive that response through the X API;
+  other posts require a human to send it.
 - **Charlie:** wants a standing system that surfaces genuinely useful build ideas sourced
   from real demand, filters out anything unsafe or narrowly personal, and hands the good ones to
   a build pipeline (this repo's own parent project, `project-factory`, is a natural downstream
@@ -45,9 +46,9 @@ exactly one stage at a time in a durable ledger:
   stage be built, tested, and demoed without an X API key. `XApiSource` is the real source,
   with authenticated pagination and response normalization behind the same interface. Swapping
   sources requires no scoring or storage changes.
-- **The ledger is the source of truth for "have we processed this."** No candidate is
-  re-evaluated, re-built, or re-replied-to twice; `advance()` moves a candidate forward exactly
-  one stage and is safe to call blindly (no-ops at the terminal stage instead of raising).
+- **The ledger is the source of truth for confirmed progress.** Stage writes cannot move a
+  candidate backward; `advance()` moves a candidate forward exactly one stage and is safe to call
+  blindly (no-ops at the terminal stage instead of raising).
 - **Zero paid dependencies to run or test.** Runtime dependency surface is PyYAML only; the full
   test suite runs against local fixtures with no network access, matching the parent factory's
   $0-cost discipline.
@@ -62,7 +63,8 @@ exactly one stage at a time in a durable ledger:
   retains confirmed repository and site coordinates across restarts.
 - `ResumablePublisher` verifies repository and site URLs independently and retries only the
   destination that is not yet public.
-- `ReplyDelivery` requires explicit authorization, persists the remote X post ID under a lock,
-  and advances the ledger only after the receipt exists.
+- `ReplyDelivery` requires explicit authorization, persists a confirmed remote X post ID under a
+  lock, and advances the ledger only after the receipt exists. X API eligibility and ambiguous
+  create-post responses remain production constraints described in [`BACKLOG.md`](BACKLOG.md).
 - `wishwright status` gives an at-a-glance view of how many candidates are sitting in each stage,
   so a stuck pipeline is visible immediately rather than silently piling up in one stage.
